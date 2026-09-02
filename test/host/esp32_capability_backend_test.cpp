@@ -26,6 +26,9 @@ int main() {
     assert(Strata::regionOf(dma) == Region::Internal);
     Strata::free(dma);
 
+    fake_heap_caps_external_attempts = 0;
+    fake_heap_caps_internal_attempts = 0;
+
     auto *fallback = Strata::allocate(Strata::AllocationRequest{
         .sizeBytes = 256,
         .placement = Placement::PreferExternal,

@@ -2,7 +2,7 @@
 
 Strata is a portable C++20 memory placement and allocation library with first-class ESP32 internal-RAM and PSRAM support.
 
-It gives applications and libraries one vocabulary for allocation intent while platform-specific backends own the underlying memory mechanics. Core allocation APIs remain standard-C++ compatible, while ESP32, optional FreeRTOS, and optional ArduinoJson integrations add platform-specific capabilities without leaking them into the core contract.
+It gives applications and libraries one vocabulary for allocation intent while platform-specific backends own the underlying memory mechanics. Core allocation APIs remain standard-C++ compatible, while optional PMR, FreeRTOS, and ArduinoJson integrations add specialized capabilities without leaking them into the core contract.
 
 [![CI](https://github.com/ZekStack/Strata/actions/workflows/ci.yml/badge.svg)](https://github.com/ZekStack/Strata/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ZekStack/Strata?sort=semver)](https://github.com/ZekStack/Strata/releases)
@@ -15,6 +15,7 @@ It gives applications and libraries one vocabulary for allocation intent while p
 - **Strict capability requirements** — DMA and executable requirements never silently degrade.
 - **Typed ownership** — raw allocation, typed construction, unique ownership, shared ownership, and move-only buffers use the same placement model.
 - **STL integration** — placement-aware allocators and container helpers preserve allocation intent.
+- **PMR integration** — use the same placement policies through standard polymorphic allocators and nested PMR containers.
 - **Runtime diagnostics** — inspect actual memory regions and platform heap statistics.
 - **Optional FreeRTOS memory primitives** — explicitly place task stacks and queue item storage while keeping FreeRTOS out of the core headers.
 - **Optional ArduinoJson allocation** — route ArduinoJson 7 document memory through the same Strata placement policies.
@@ -98,6 +99,7 @@ values.push_back(42);
 - Generic builds support normal process-heap allocation but deliberately report external-memory and embedded hardware capabilities as unsupported.
 - Raw allocation, typed ownership, and `Buffer` report allocation failure without requiring exceptions.
 - `Strata::Allocator<T>` follows standard allocator expectations and throws `std::bad_alloc` when exceptions are enabled.
+- The optional PMR adapter requires standard-library `<memory_resource>` support and exceptions to preserve `std::pmr::memory_resource` failure semantics.
 - External RAM is not automatically safe for DMA, ISR use, or cache-disabled flash windows.
 - FreeRTOS task and queue integrations are opt-in and require static allocation support.
 - Tasks that can execute while flash/cache is disabled should keep their stacks in internal memory.
@@ -139,6 +141,7 @@ examples/Basic
 | [`docs/diagnostics.md`](docs/diagnostics.md) | Region introspection and heap statistics. |
 | [`docs/typed-ownership.md`](docs/typed-ownership.md) | Typed raw storage, object lifetime, and unique ownership. |
 | [`docs/stl.md`](docs/stl.md) | Stateful allocator semantics and STL helpers. |
+| [`docs/pmr.md`](docs/pmr.md) | Optional placement-aware `std::pmr::memory_resource` integration. |
 | [`docs/buffer.md`](docs/buffer.md) | Owned byte buffers and resize semantics. |
 | [`docs/capabilities.md`](docs/capabilities.md) | Required DMA/executable constraints and safety boundaries. |
 | [`docs/freertos-tasks.md`](docs/freertos-tasks.md) | Optional task-stack placement and static task creation. |
@@ -165,6 +168,16 @@ auto stats = Strata::memoryStats(Strata::Region::Internal);
 
 Strata::free(raw);
 Strata::free(dma);
+```
+
+Optional PMR integration:
+
+```cpp
+#include <strata/pmr/MemoryResource.h>
+
+Strata::MemoryResource resource{Strata::Placement::PreferExternal};
+std::pmr::vector<std::pmr::string> values{&resource};
+values.emplace_back("Strata");
 ```
 
 Optional ArduinoJson integration:
@@ -208,10 +221,11 @@ auto queue = Strata::FreeRTOS::Queue<Event>::create({
 | ESP32 backend | Arduino ESP32 / ESP-IDF-compatible build environment |
 | External memory | ESP32 PSRAM through ESP-IDF heap capabilities |
 | Core dependencies | none |
+| Optional PMR integration | Standard-library `<memory_resource>` with exceptions enabled |
 | Optional FreeRTOS integration | FreeRTOS with static allocation enabled |
 | Optional ArduinoJson integration | ArduinoJson 7; CI compatibility target 7.4.3 |
-| Exceptions | Not required by core APIs; STL allocator follows standard semantics |
-| Status | Early-stage `0.1.0`; Phase 10 ArduinoJson adapter available |
+| Exceptions | Not required by core APIs; STL/PMR standard allocator surfaces follow standard semantics |
+| Status | Early-stage `0.1.0`; Phase 11 PMR support available |
 
 ## License
 

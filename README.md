@@ -6,7 +6,7 @@ Strata is a lightweight, standalone C++ memory placement and allocation utility 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!NOTE]
-> Strata is under active development. Phases 1–7 provide placement, raw allocation, diagnostics, typed ownership, placement-aware STL allocation, owned buffers, and required DMA/executable allocation capabilities. Optional FreeRTOS integration is planned next.
+> Strata is under active development. Phases 1–8 provide placement, raw allocation, diagnostics, typed ownership, placement-aware STL allocation, owned buffers, required allocation capabilities, and optional FreeRTOS task-stack/task primitives.
 
 ## Design goals
 
@@ -14,8 +14,8 @@ Strata is a lightweight, standalone C++ memory placement and allocation utility 
 - **Portable vocabulary** — public APIs describe memory intent instead of leaking ESP32-specific PSRAM details.
 - **Explicit fallback semantics** — callers can distinguish preference from requirement.
 - **Required capabilities stay required** — DMA/executable constraints never silently disappear during placement fallback.
-- **Platform-owned mechanics** — ESP-IDF, FreeRTOS, and other platform details stay behind Strata boundaries.
-- **Infrastructure, not orchestration** — Worker remains the high-level job/task framework.
+- **Optional RTOS integration** — core Strata headers have no FreeRTOS dependency; task integration is opt-in.
+- **Infrastructure, not orchestration** — Worker remains the preferred high-level job/task framework.
 - **Deterministic core failure** — raw and typed ownership APIs return null/empty results; the standard allocator adapter follows STL exception semantics when exceptions are enabled.
 
 ## Quick start
@@ -67,6 +67,20 @@ Use `supports(Capability)` to query whether the current platform exposes memory 
 
 Capability support is not a substitute for subsystem safety rules. DMA peripherals may impose additional alignment/ownership restrictions, allocation APIs are not automatically ISR-safe, and external RAM remains unsuitable during cache-disabled flash windows.
 
+## Optional FreeRTOS task integration
+
+FreeRTOS support is opt-in through:
+
+```cpp
+#include <strata/freertos/Task.h>
+```
+
+`Strata::FreeRTOS::TaskStack` owns explicitly placed stack memory and exposes requested bytes, requested placement, and actual region. `Strata::FreeRTOS::Task` uses FreeRTOS static task creation so Strata can supply that stack while keeping the task control block internal.
+
+All public stack sizes and high-water-mark values are normalized to bytes. `TaskConfig` contains only task name, stack bytes, stack placement, priority, and affinity. This layer intentionally does not implement jobs, callbacks, retry, cancellation, pools, or scheduling policy; ZekStack applications should continue using Worker for high-level orchestration.
+
+External task stacks remain subject to platform/cache restrictions. Tasks that may run during cache-disabled flash operations should use internal stack placement.
+
 ## Allocation failure and exceptions
 
 Raw allocation, `Buffer`, and typed ownership APIs preserve deterministic embedded behavior by returning failure without requiring exceptions.
@@ -115,6 +129,7 @@ build_unflags =
 - [`docs/stl.md`](docs/stl.md) — stateful allocator semantics and STL helpers.
 - [`docs/buffer.md`](docs/buffer.md) — move-only owned byte buffers and resize semantics.
 - [`docs/capabilities.md`](docs/capabilities.md) — required DMA/executable constraints and safety boundaries.
+- [`docs/freertos-tasks.md`](docs/freertos-tasks.md) — optional task-stack placement, static task creation, byte-unit diagnostics, and lifetime rules.
 - [`docs/TODO.md`](docs/TODO.md) — complete phased implementation and migration roadmap.
 
 ## Compatibility
@@ -125,8 +140,9 @@ build_unflags =
 | Core API | Standard C++ |
 | ESP32 backend | Arduino ESP32 / ESP-IDF-compatible build environment |
 | External memory | ESP32 external RAM through ESP-IDF heap capabilities |
-| Dependencies | none |
-| Status | Early-stage `0.1.0`; Phase 7 capabilities available |
+| Core dependencies | none |
+| Optional task integration | FreeRTOS with static allocation enabled |
+| Status | Early-stage `0.1.0`; Phase 8 FreeRTOS task primitives available |
 
 ## ZekStack adoption
 

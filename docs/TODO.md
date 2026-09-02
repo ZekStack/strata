@@ -88,19 +88,19 @@ This document is the implementation checklist for Strata itself and the later Ze
 
 ### Phase 8A — Task stack abstraction
 
-- [ ] Add an optional FreeRTOS integration header without making FreeRTOS a core dependency.
-- [ ] Add a task-stack allocation abstraction that always uses byte sizes publicly.
-- [ ] Record requested placement and actual stack region.
-- [ ] Ensure correct allocation/deallocation APIs are paired on ESP32.
+- [x] Add an optional FreeRTOS integration header without making FreeRTOS a core dependency.
+- [x] Add a task-stack allocation abstraction that always uses byte sizes publicly.
+- [x] Record requested placement and actual stack region.
+- [x] Ensure correct allocation/deallocation APIs are paired on ESP32.
 
 ### Phase 8B — Minimal task creation primitive
 
-- [ ] Add a minimal `TaskConfig` for name, stack bytes, placement, priority, and affinity.
-- [ ] Add low-level task creation that honors stack placement.
-- [ ] Add task stack high-water-mark diagnostics in bytes.
-- [ ] Keep jobs, callbacks, retry, cancellation, pools, and orchestration out of Strata.
-- [ ] Document Worker as the preferred high-level asynchronous job API.
-- [ ] Test internal, preferred-external, required-external, and unavailable-external task creation.
+- [x] Add a minimal `TaskConfig` for name, stack bytes, placement, priority, and affinity.
+- [x] Add low-level task creation that honors stack placement.
+- [x] Add task stack high-water-mark diagnostics in bytes.
+- [x] Keep jobs, callbacks, retry, cancellation, pools, and orchestration out of Strata.
+- [x] Document Worker as the preferred high-level asynchronous job API.
+- [x] Test internal, preferred-external, required-external, and unavailable-external task creation.
 
 ## Phase 9 — Optional FreeRTOS queue storage
 

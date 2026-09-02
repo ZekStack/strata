@@ -77,12 +77,12 @@ This document is the implementation checklist for Strata itself and the later Ze
 
 ## Phase 7 — Advanced allocation capabilities
 
-- [ ] Add an extensible `Capability` bitmask only for constraints with clear portable semantics.
-- [ ] Add capability requirements to `AllocationRequest`.
-- [ ] Map DMA/executable constraints to ESP-IDF heap capabilities where supported.
-- [ ] Ensure required capabilities never silently degrade.
-- [ ] Document cache-disabled, DMA, ISR, and other platform-sensitive restrictions.
-- [ ] Add capability support queries and tests.
+- [x] Add an extensible `Capability` bitmask only for constraints with clear portable semantics.
+- [x] Add capability requirements to `AllocationRequest`.
+- [x] Map DMA/executable constraints to ESP-IDF heap capabilities where supported.
+- [x] Ensure required capabilities never silently degrade.
+- [x] Document cache-disabled, DMA, ISR, and other platform-sensitive restrictions.
+- [x] Add capability support queries and tests.
 
 ## Phase 8 — Optional FreeRTOS task memory integration
 

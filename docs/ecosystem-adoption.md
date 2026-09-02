@@ -1,6 +1,8 @@
 # Ecosystem adoption
 
-Strata migrations begin only after its standalone API and release contracts are stable. Each adoption slice should preserve subsystem behavior and measure internal-RAM impact before and after the change.
+The Phase 12 Strata API and release contracts are the stable base for ecosystem migrations. Each adoption slice should preserve subsystem behavior and measure internal-RAM impact before and after the change.
+
+Use `migration.md` for mechanical migration patterns and `placement.md` for the placement/fallback contract. Adoption should proceed subsystem by subsystem rather than through a repository-wide allocator rewrite.
 
 ## Worker
 

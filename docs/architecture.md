@@ -2,121 +2,141 @@
 
 ## Purpose
 
-Strata is a standalone memory placement and allocation utility library. Its responsibility is to let callers express memory requirements in portable terms while platform backends translate those requirements into native allocation and memory APIs.
+Strata is the standalone low-level memory placement layer for the ZekStack ecosystem. It lets applications and reusable libraries describe allocation intent in portable C++ terms while platform backends translate that intent to the native allocator.
 
-Strata must not depend on Worker, Signal, Trace, Tempo, Passage, or any other ZekStack library. The intended dependency direction is:
+Strata does not own application scheduling, business logic, logging policy, networking, persistence, or device behavior.
+
+The dependency direction is intentionally one-way:
 
 ```text
-application
-    ↓
+application / firmware
+        ↓
 Worker / Signal / Trace / Tempo / other libraries
-    ↓
+        ↓
 Strata
-    ↓
-standard allocator / platform allocator / optional FreeRTOS integration
+        ↓
+standard allocator or platform allocator
 ```
 
-## Public vocabulary
+Optional adapters add narrow integration boundaries without becoming core dependencies:
+
+```text
+FreeRTOS    → strata/freertos/*
+ArduinoJson → strata/arduinojson/*
+std::pmr    → strata/pmr/*
+```
+
+None of those optional headers are included by `Strata.h`.
+
+## Stable public vocabulary
 
 ### Placement
 
-`Placement` describes caller intent.
-
-- `Default` — use normal platform behavior.
-- `Internal` — the operation must use internal/default-local memory.
-- `PreferExternal` — try external memory first and fall back to internal memory when necessary.
-- `RequireExternal` — external memory is mandatory and failure must be surfaced when unavailable.
+`Placement` describes requested policy: `Default`, `Internal`, `PreferExternal`, or `RequireExternal`.
 
 ### Region
 
-`Region` describes an observed allocation location.
+`Region` describes observed storage location: `Unknown`, `Internal`, or `External`.
 
-- `Unknown`
-- `Internal`
-- `External`
+Requested placement and actual region are deliberately different concepts. A `PreferExternal` allocation may legally resolve to `Region::Internal`; `RequireExternal` may not.
 
-A requested placement must never be confused with the actual region. For example, `PreferExternal` may legally produce `Region::Internal` after fallback, while `RequireExternal` may not.
+### Capability
 
-## Raw allocation contract
+`Capability` describes required allocation properties such as DMA or executable memory. Capabilities are hard requirements and are preserved across placement fallback.
 
-Phase 2 provides the non-owning raw allocation layer used by later RAII, allocator, buffer, and integration APIs.
+The public core vocabulary intentionally contains no ESP-IDF heap flags, PSRAM-specific enum values, FreeRTOS types, ArduinoJson types, or PMR types.
 
-### AllocationRequest
+## Layering
 
-`AllocationRequest` carries three constraints:
+### Core allocation
 
-- `sizeBytes` — requested byte count;
-- `placement` — requested placement policy;
-- `alignment` — requested power-of-two alignment, defaulting to `alignof(std::max_align_t)`.
+`AllocationRequest`, `allocate`, `calloc`, `reallocate`, and `free` form the lowest public layer. Ordinary core allocation APIs are `noexcept` and report allocation failure with `nullptr`. Zero-size raw allocation has deterministic Strata semantics rather than relying on implementation-defined allocator sentinels.
 
-The request is deliberately extensible so later capability constraints can be added without replacing the placement vocabulary.
+### Diagnostics
 
-### Failure and zero-size behavior
+`regionOf`, `supports`, and `memoryStats` expose placement support and observed heap state without exposing native allocator APIs.
 
-The ordinary raw allocation API is `noexcept` and reports failure with `nullptr`.
+### Typed ownership
 
-- `allocate(0, ...)` returns `nullptr`.
-- `calloc(0, size, ...)` and `calloc(count, 0, ...)` return `nullptr`.
-- `calloc` rejects `count * size` overflow before entering a platform backend.
-- alignment must be a non-zero power of two; invalid or platform-unsupported alignment returns `nullptr`.
-- `free(nullptr)` is a no-op.
+Typed allocation/construction helpers and `UniquePtr` build object lifetime on top of the same raw allocation contract.
 
-This avoids platform-dependent zero-size sentinel allocations and gives embedded callers one deterministic contract.
+### Buffer
 
-### Reallocation and migration
+`Buffer` is move-only owned byte storage. Its requested placement remains part of the object policy and is preserved across resize attempts.
 
-`reallocate(ptr, newSize, placement)` may move an allocation in order to satisfy the new placement request.
+### Standard-library allocator
 
-- `reallocate(nullptr, size, placement)` is equivalent to a new default-aligned allocation.
-- `reallocate(ptr, 0, placement)` frees `ptr` and returns `nullptr`.
-- `Internal` may migrate an ESP32 allocation into internal memory.
-- `PreferExternal` first attempts migration/resizing in external memory and retries internally if the external request fails.
-- `RequireExternal` attempts only external memory and never degrades.
-- on failure, the original allocation remains valid and owned by the caller.
+`Allocator<T>` carries placement into standard containers. It follows the standard allocator failure contract where exceptions are enabled. Exception-disabled standard containers are not treated as a deterministic OOM recovery mechanism.
 
-Phase 2 `reallocate` is defined for default-aligned allocations produced by `allocate(size, placement)`, `calloc`, or `reallocate`. Over-aligned allocations produced through `AllocationRequest` must be released with `Strata::free` and are not accepted by `reallocate` yet. This avoids pretending that portable `realloc` APIs preserve arbitrary alignment metadata.
+### PMR
+
+`MemoryResource` is an optional `std::pmr::memory_resource` adapter. It is excluded from `Strata.h` because PMR availability and exception requirements are separate from the core embedded contract.
+
+### ArduinoJson
+
+The optional ArduinoJson 7 allocator adapter forwards document allocation through a Strata placement policy. ArduinoJson remains a caller-supplied dependency and the allocator lifetime remains explicit.
+
+### FreeRTOS tasks and queues
+
+The optional FreeRTOS layer owns low-level static task/queue memory and exposes native handles for infrastructure integration. It does not replace Worker or become a general task framework.
+
+Task stacks may use external memory only when the calling subsystem can tolerate the platform's cache/flash restrictions. ISR-accessible queues require internal item storage under the current contract.
 
 ## Platform boundary
 
 ### Generic backend
 
-The generic backend is the portable baseline.
+The generic backend provides the portable contract for host builds:
 
-- `Default` and `Internal` use standard C/C++ allocation primitives.
-- `PreferExternal` falls back directly to the same internal/default-local heap because no external provider exists.
-- `RequireExternal` fails with `nullptr` without modifying an existing allocation.
-- over-aligned allocation uses the standard aligned allocation primitive and remains compatible with `Strata::free`.
+- `Default`, `Internal`, and `PreferExternal` use the process heap;
+- `RequireExternal` is unsupported and fails;
+- embedded-only capabilities are reported unsupported;
+- region classification remains conservative.
+
+This backend is primarily a portability baseline and contract-test target. It does not pretend that host memory has ESP32 PSRAM semantics.
 
 ### ESP32 backend
 
-The ESP32 backend maps placement to ESP-IDF heap capabilities:
+The ESP32 backend translates Strata requests to ESP-IDF heap capabilities:
 
-- `Default` → 8-bit capable normal heap behavior;
-- `Internal` → internal + 8-bit capable memory;
-- external placement → external RAM + 8-bit capable memory.
+- internal placement requires internal byte-addressable memory;
+- external placement requires SPIRAM;
+- required capabilities are combined with placement;
+- `PreferExternal` explicitly tries external first and then internal;
+- `RequireExternal` performs no internal fallback.
 
-`PreferExternal` performs two explicit attempts: external first, then internal. `RequireExternal` performs only the external attempt. No PSRAM-specific term leaks into the public Strata API.
+ESP-IDF headers and `MALLOC_CAP_*` details stay inside the backend implementation. Reusable callers should not need to depend on those symbols.
 
-Reallocation uses ESP-IDF's capability-aware realloc behavior, which can move an existing allocation when the requested capabilities change.
+## Failure contracts
 
-## FreeRTOS boundary
+The stable failure rules are:
 
-Strata will eventually provide optional low-level helpers for placing FreeRTOS task stacks and queue backing storage. It must not become a task orchestration framework.
-
-Worker remains responsible for jobs, concurrency, cancellation, lifecycle, cleanup, callbacks, and application-facing asynchronous work. Worker will later depend on Strata for the memory and task-stack mechanics it currently implements itself.
+1. Raw allocation, typed ownership, and `Buffer` do not require exceptions for ordinary allocation failure.
+2. Required placement and capability constraints never silently degrade.
+3. Failed `reallocate` leaves the original allocation valid.
+4. `Allocator<T>` follows standard allocator behavior; exception-enabled OOM throws `std::bad_alloc`.
+5. PMR follows `std::pmr::memory_resource` semantics and therefore requires exceptions.
+6. Strata production code must not abort or terminate as an ordinary allocation-failure policy.
+7. Optional integration failure must remain local to the integration rather than changing core behavior.
 
 ## Safety rules
 
-Allocation and later integration phases must preserve these rules:
+1. External memory is never assumed safe for ISR, DMA, flash/cache-disabled, or peripheral-sensitive use merely because it is allocatable.
+2. Callers must choose `Internal` for contexts that require internal accessibility.
+3. `PreferExternal` is appropriate only when internal fallback is semantically acceptable.
+4. `RequireExternal` is appropriate only when failure is preferable to consuming internal memory.
+5. Diagnostics distinguish requested policy from observed region.
+6. Strata has no required global initialization and no hidden mutable global default placement.
+7. Optional diagnostics must not introduce mandatory registries, locks, or allocator recursion.
 
-1. Required constraints never silently degrade.
-2. External memory is never assumed safe for DMA, ISR, flash/cache-disabled, or other platform-sensitive contexts.
-3. Platform-specific capabilities stay behind explicit Strata abstractions.
-4. Strata has no required global initialization and no hidden mutable global default placement.
-5. Failure behavior is deterministic and suitable for embedded builds without requiring exceptions in ordinary APIs.
-6. Diagnostics distinguish requested placement from actual memory region.
-7. Failed reallocation never consumes or invalidates the caller's original allocation.
+## API stability boundary
 
-## Current boundary
+The Phase 12 API is the stable base for ecosystem migration. The core names and semantics to preserve are:
 
-Phase 2 ends at raw allocation mechanics. Region introspection, heap diagnostics, typed construction/destruction, STL allocators, owned buffers, capability constraints, and FreeRTOS integration remain later independent phases.
+- `Placement`, `Region`, and `Capability`;
+- `AllocationRequest` and the raw allocation functions;
+- diagnostics and support queries;
+- typed ownership, `Buffer`, `Allocator<T>`, and STL factories;
+- optional `MemoryResource`, ArduinoJson, FreeRTOS task, and FreeRTOS queue adapters behind their explicit include paths.
+
+Future work may add diagnostics and integrations, but should not make platform-specific types part of the core vocabulary or weaken existing placement/failure guarantees.

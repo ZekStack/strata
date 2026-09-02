@@ -105,6 +105,7 @@ values.push_back(42);
 - Tasks that can execute while flash/cache is disabled should keep their stacks in internal memory.
 - ISR-accessible Strata queues require internal item storage; external queue storage is task-only.
 - ArduinoJson integration is opt-in, targets ArduinoJson 7, and requires the Strata allocator object to outlive the `JsonDocument` using it.
+- The Phase 12 core vocabulary and placement/failure semantics form the stable base for ZekStack ecosystem migrations.
 
 ## Examples
 
@@ -133,11 +134,13 @@ examples/Basic
 | Document | Description |
 | --- | --- |
 | [`docs/getting-started.md`](docs/getting-started.md) | Installation, first allocation, and placement choices. |
+| [`docs/placement.md`](docs/placement.md) | Stable placement, region, fallback, reallocation, and safety semantics. |
+| [`docs/migration.md`](docs/migration.md) | Recipes for migrating raw allocation, PSRAM helpers, containers, tasks, queues, and adapters. |
 | [`docs/configuration.md`](docs/configuration.md) | Build requirements, backend selection, PSRAM, exceptions, and optional integrations. |
 | [`docs/api.md`](docs/api.md) | Public API overview and include boundaries. |
 | [`docs/examples.md`](docs/examples.md) | Guide to the included sketches. |
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | Common allocation, PSRAM, capability, and integration issues. |
-| [`docs/architecture.md`](docs/architecture.md) | Architectural boundaries and platform mapping. |
+| [`docs/architecture.md`](docs/architecture.md) | Architectural boundaries, stable vocabulary, platform mapping, and failure contracts. |
 | [`docs/diagnostics.md`](docs/diagnostics.md) | Region introspection and heap statistics. |
 | [`docs/typed-ownership.md`](docs/typed-ownership.md) | Typed raw storage, object lifetime, and unique ownership. |
 | [`docs/stl.md`](docs/stl.md) | Stateful allocator semantics and STL helpers. |
@@ -147,7 +150,7 @@ examples/Basic
 | [`docs/freertos-tasks.md`](docs/freertos-tasks.md) | Optional task-stack placement and static task creation. |
 | [`docs/freertos-queues.md`](docs/freertos-queues.md) | Optional typed queue storage placement and ISR safety. |
 | [`docs/arduinojson.md`](docs/arduinojson.md) | Optional ArduinoJson 7 custom allocator integration. |
-| [`docs/roadmap.md`](docs/roadmap.md) | Remaining Strata implementation roadmap. |
+| [`docs/roadmap.md`](docs/roadmap.md) | Remaining advanced Strata work after the stable foundational phases. |
 | [`docs/ecosystem-adoption.md`](docs/ecosystem-adoption.md) | Planned adoption across ZekStack and Core. |
 
 ## API overview
@@ -225,7 +228,7 @@ auto queue = Strata::FreeRTOS::Queue<Event>::create({
 | Optional FreeRTOS integration | FreeRTOS with static allocation enabled |
 | Optional ArduinoJson integration | ArduinoJson 7; CI compatibility target 7.4.3 |
 | Exceptions | Not required by core APIs; STL/PMR standard allocator surfaces follow standard semantics |
-| Status | Early-stage `0.1.0`; Phase 11 PMR support available |
+| Status | Early-stage `0.1.0`; Phase 12 stable API base complete |
 
 ## License
 
@@ -233,4 +236,4 @@ MIT — see [`LICENSE.md`](LICENSE.md).
 
 ## ZekStack
 
-Part of the ZekStack library stack. Strata is intended to become the shared low-level memory-placement layer used by other ZekStack libraries after its standalone contracts stabilize.
+Part of the ZekStack library stack. The Phase 12 contracts are the stable low-level memory-placement base for measured, subsystem-by-subsystem adoption by other ZekStack libraries and Core.

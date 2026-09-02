@@ -22,6 +22,8 @@ Optional integrations are intentionally separate:
 - `Strata::supports(...)` — placement, region, and capability support queries.
 - `Strata::regionOf(ptr)` — inspect the region of a pointer when the platform can identify it.
 
+See `placement.md` for the stable fallback, reallocation, capability-interaction, and safety semantics.
+
 ## Raw allocation
 
 ```cpp
@@ -98,4 +100,17 @@ The allocator must outlive the `JsonDocument`. The integration is opt-in, is not
 
 See `arduinojson.md` for placement, failure, lifetime, and PSRAM details.
 
-See the specialized documents for exact semantics and safety boundaries.
+## Stable API boundary
+
+Phase 12 establishes the current API as the stable base for ecosystem migrations. Core public headers remain standard-C++ and platform-neutral; FreeRTOS, ArduinoJson, PMR, and ESP32 implementation types stay behind explicit integration/backend boundaries.
+
+The following semantic contracts are intentionally protected by tests and CI:
+
+- placement and observed region remain distinct;
+- required placement/capability constraints never silently weaken;
+- ordinary core APIs remain usable with exceptions disabled;
+- allocation failure does not use abort/terminate as normal control flow;
+- optional integrations are not pulled into `Strata.h`;
+- platform-specific allocator flags do not become part of the core public vocabulary.
+
+See `architecture.md` for the layering contract and `migration.md` for ecosystem adoption recipes.

@@ -36,9 +36,17 @@ jobs:
             exit 1
           fi
 
-      - name: Audit production sources
+      - name: Audit core public header boundary
         run: |
-          violations="$(grep -RInE '(^|[^[:alnum:]_])throw([^[:alnum:]_]|$)|std::abort[[:space:]]*\(' src || true)"
+          core_headers="src/Strata.h $(find src/strata -maxdepth 1 -type f -name '*.h' -print)"
+          if grep -InE 'freertos/|ArduinoJson|memory_resource|MALLOC_CAP_|esp_heap|esp_memory|FreeRTOS|ESP32' $core_headers; then
+            echo "Core public headers must remain platform and optional-integration neutral"
+            exit 1
+          fi
+
+      - name: Audit production failure policy
+        run: |
+          violations="$(grep -RInE '(^|[^[:alnum:]_])throw([^[:alnum:]_]|$)|std::abort[[:space:]]*\(|std::terminate[[:space:]]*\(|(^|[^[:alnum:]_:])abort[[:space:]]*\(' src || true)"
           violations="$(printf '%s\n' "$violations" | grep -v 'src/strata/Allocator.h:.*throw std::bad_alloc' || true)"
           if [ -n "$violations" ]; then
             printf '%s\n' "$violations"
@@ -62,6 +70,12 @@ jobs:
           mkdir -p build
           common_sources="src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp"
           common_flags="-std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc"
+
+          g++ $common_flags tests/host/public_api_stability_contract_test.cpp $common_sources -o build/public-api-stability-contract-test
+          ./build/public-api-stability-contract-test
+
+          g++ $common_flags -fno-exceptions tests/host/core_no_exceptions_contract_test.cpp $common_sources -o build/core-no-exceptions-contract-test
+          ./build/core-no-exceptions-contract-test
 
           g++ $common_flags tests/host/placement_contract_test.cpp $common_sources -o build/placement-contract-test
           ./build/placement-contract-test

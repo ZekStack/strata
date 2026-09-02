@@ -27,4 +27,6 @@ struct StaticQueue_t {
 };
 
 #define configSUPPORT_STATIC_ALLOCATION 1
+#define INCLUDE_vTaskDelete 1
+#define INCLUDE_uxTaskGetStackHighWaterMark 1
 #define tskIDLE_PRIORITY 0U

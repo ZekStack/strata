@@ -1,6 +1,6 @@
 {
   "name": "Strata",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Portable memory placement and allocation utilities for embedded and standard C++ applications.",
   "keywords": [
     "memory",

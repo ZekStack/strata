@@ -6,11 +6,13 @@
 static_assert(std::is_enum_v<Strata::Placement>);
 static_assert(std::is_enum_v<Strata::Region>);
 static_assert(std::is_enum_v<Strata::Capability>);
+static_assert(std::is_trivially_copyable_v<Strata::MemoryPolicy>);
 static_assert(Strata::validPlacement(Strata::Placement::Default));
 static_assert(Strata::validPlacement(Strata::Placement::Internal));
 static_assert(Strata::validPlacement(Strata::Placement::PreferExternal));
 static_assert(Strata::validPlacement(Strata::Placement::RequireExternal));
 static_assert(!Strata::validPlacement(static_cast<Strata::Placement>(0xFF)));
+static_assert(Strata::validMemoryPolicy(Strata::MemoryPolicy{}));
 static_assert(std::is_same_v<decltype(Strata::regionOf(nullptr)), Strata::Region>);
 static_assert(noexcept(Strata::allocate(std::size_t{1}, Strata::Placement::Default)));
 static_assert(noexcept(Strata::free(nullptr)));
@@ -37,6 +39,14 @@ int main() {
 	}
 	if (!Strata::hasCapability(Capability::Dma | Capability::Executable, Capability::Dma)) {
 		return 4;
+	}
+
+	const Strata::MemoryPolicy policy{
+		.allocation = Placement::PreferExternal,
+		.taskStack = Placement::Internal,
+	};
+	if (!Strata::validMemoryPolicy(policy)) {
+		return 5;
 	}
 	return 0;
 }

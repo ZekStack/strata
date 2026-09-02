@@ -11,6 +11,7 @@ Optional integrations are intentionally separate:
 ```cpp
 #include <strata/freertos/Task.h>
 #include <strata/freertos/Queue.h>
+#include <strata/freertos/Mutex.h>
 #include <strata/arduinojson/Allocator.h>
 #include <strata/pmr/MemoryResource.h>
 ```
@@ -26,6 +27,19 @@ Optional integrations are intentionally separate:
 Allocation/support APIs reject invalid `Placement` enum values instead of interpreting them as another policy.
 
 See `placement.md` for the stable fallback, reallocation, capability-interaction, and safety semantics.
+
+## Memory policy
+
+`Strata::MemoryPolicy` is the shared consuming-library configuration vocabulary:
+
+```cpp
+Strata::MemoryPolicy policy{
+    .allocation = Strata::Placement::PreferExternal,
+    .taskStack = Strata::Placement::Internal,
+};
+```
+
+Its defaults are `allocation = Placement::Default` and `taskStack = Placement::Internal`. `validMemoryPolicy()` validates both fields. The type has no global effect; libraries embed it in their own configuration objects. Safety requirements may tighten the policy for individual resources. See `memory-policy.md`.
 
 ## Raw allocation
 
@@ -106,6 +120,12 @@ This API is intentionally low-level. Worker remains the ZekStack orchestration l
 
 See `freertos-queues.md` for lifecycle and ISR safety details.
 
+## FreeRTOS mutexes
+
+`Strata::FreeRTOS::Mutex` and `Strata::FreeRTOS::RecursiveMutex` are move-only owners created through the FreeRTOS static mutex APIs. Their `StaticSemaphore_t` control storage is always allocated through Strata with `Placement::Internal`; there is intentionally no placement configuration for synchronization metadata.
+
+Both wrappers expose `lock()`, `tryLock()`, `unlock()`, `reset()`, `handle()`, `controlPlacement()`, and `controlRegion()`. See `freertos-mutexes.md` for compile-time requirements and ownership semantics.
+
 ## ArduinoJson
 
 `Strata::ArduinoJson::Allocator` implements the ArduinoJson 7 custom allocator interface and forwards allocation, reallocation, and deallocation through a single Strata `Placement` policy.
@@ -121,16 +141,18 @@ See `arduinojson.md` for placement, failure, lifetime, and PSRAM details.
 
 ## Stable API boundary
 
-Phase 12 established the core API as the stable base for ecosystem migrations. The completed `v0.1.0` implementation roadmap adds advanced diagnostics and release hardening without weakening that boundary.
+The core API remains the stable base for ecosystem migrations. `v0.1.1` adds the shared `MemoryPolicy` vocabulary and FreeRTOS mutex ownership without weakening the `v0.1.0` placement/failure contracts.
 
 The following semantic contracts are intentionally protected by tests and CI:
 
 - placement and observed region remain distinct;
 - required placement/capability constraints never silently weaken;
+- `MemoryPolicy` is local configuration vocabulary, not a mutable global default;
 - ordinary core APIs remain usable with exceptions disabled;
 - allocation failure does not use abort/terminate as normal control flow;
 - optional integrations are not pulled into `Strata.h`;
 - platform-specific allocator flags do not become part of the core public vocabulary;
-- advanced diagnostics remain optional and do not require an allocation registry.
+- advanced diagnostics remain optional and do not require an allocation registry;
+- FreeRTOS mutex wrappers use static creation and internal Strata-backed control storage.
 
 See `architecture.md` for the layering contract and `migration.md` for ecosystem adoption recipes.

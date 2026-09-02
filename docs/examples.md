@@ -14,6 +14,7 @@ Strata ships focused Arduino sketches under `examples/`.
 | `Capabilities` | Required DMA/executable constraints. |
 | `FreeRTOSTask` | Optional FreeRTOS stack placement and task diagnostics. |
 | `FreeRTOSQueue` | Optional typed FreeRTOS queue storage placement and task-only queue use. |
+| `FreeRTOSMutex` | Optional statically created mutex and recursive-mutex ownership with internal control storage. |
 | `ArduinoJson` | Optional ArduinoJson 7 document allocation through Strata placement. |
 
 Start with `examples/Basic`. Move to the specialized example that matches the API you need rather than combining all Strata features into one sketch.

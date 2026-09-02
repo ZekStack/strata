@@ -1,6 +1,6 @@
 # Releasing Strata
 
-Strata `v0.1.0` is designed to be released directly from a validated `main` commit by pushing a matching version tag.
+Strata releases are created directly from a validated `main` commit by pushing a matching semantic-version tag.
 
 ## Release prerequisites
 
@@ -15,15 +15,15 @@ Before tagging a release:
 
 `scripts/validate_release_version.py` enforces the metadata/version/changelog requirements in CI. Repository visibility is an organization/repository setting and must be checked separately.
 
-## Create v0.1.0
+## Create v0.1.1
 
 Tag the validated `main` commit and push the tag:
 
 ```bash
 git checkout main
 git pull --ff-only
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 The `CI` workflow runs again for the tag. The release job waits for metadata validation, source audits, host contracts, ESP32 backend contracts, and the full ESP32/ESP32-S3/ESP32-C3/ESP32-P4 example matrix.

@@ -17,6 +17,14 @@ extern "C" {
 #error "Strata FreeRTOS task integration requires configSUPPORT_STATIC_ALLOCATION == 1"
 #endif
 
+#if !defined(INCLUDE_vTaskDelete) || INCLUDE_vTaskDelete != 1
+#error "Strata FreeRTOS task integration requires INCLUDE_vTaskDelete == 1"
+#endif
+
+#if !defined(INCLUDE_uxTaskGetStackHighWaterMark) || INCLUDE_uxTaskGetStackHighWaterMark != 1
+#error "Strata FreeRTOS task integration requires INCLUDE_uxTaskGetStackHighWaterMark == 1"
+#endif
+
 namespace Strata::FreeRTOS {
 
 using TaskFunction = TaskFunction_t;
@@ -191,6 +199,9 @@ public:
         return task;
     }
 
+    // The owning task must be reset or destroyed from a different task context.
+    // Self-deletion cannot return to this function to release the caller-owned
+    // static stack and control-block storage safely.
     void reset() noexcept {
         if (handle_ != nullptr) {
             vTaskDelete(handle_);

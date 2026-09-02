@@ -2,6 +2,16 @@
 
 Phase 8 adds an optional, low-level FreeRTOS task-memory layer. Nothing in Strata's core headers depends on FreeRTOS; users opt in by including `strata/freertos/Task.h`.
 
+## Configuration requirements
+
+The task integration requires:
+
+- `configSUPPORT_STATIC_ALLOCATION == 1`;
+- `INCLUDE_vTaskDelete == 1`;
+- `INCLUDE_uxTaskGetStackHighWaterMark == 1`.
+
+`Task.h` checks these settings at compile time and reports an actionable error when the active FreeRTOS configuration cannot satisfy the public task API.
+
 ## Task stacks
 
 `Strata::FreeRTOS::TaskStack` is a move-only owner of raw FreeRTOS stack storage. Its public sizes are always bytes. The allocation records the requested `Placement`, while `region()` reports the current physical region through Strata diagnostics.
@@ -26,7 +36,9 @@ The requested byte count is rounded up to a whole `StackType_t` for storage. `si
 
 ## Lifetime boundary
 
-`Task` is move-only and owns the task handle, static control block, and stack memory. `reset()`/destruction calls `vTaskDelete(handle)` before releasing those buffers. A task managed by this wrapper must therefore not independently self-delete with `vTaskDelete(nullptr)`; ownership must remain with the `Task` object.
+`Task` is move-only and owns the task handle, static control block, and stack memory. `reset()`/destruction calls `vTaskDelete(handle)` before releasing those buffers.
+
+The owner must therefore be reset or destroyed from a different task context than the task it owns. If the managed task deletes itself, control cannot return through the owner cleanup path to release the caller-owned static stack and `StaticTask_t` safely. A task managed by this wrapper must not independently self-delete with `vTaskDelete(nullptr)` either; ownership must remain with the `Task` object until another task destroys or resets it.
 
 This is intentionally a primitive, not an orchestration framework. Jobs, callbacks, retry, cancellation, worker pools, cleanup services, and scheduling policy belong in higher-level libraries. ZekStack users should continue to use **Worker** for normal asynchronous job orchestration; Worker can later use this Strata layer for its low-level stack placement.
 

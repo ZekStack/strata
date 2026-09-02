@@ -6,7 +6,7 @@ Strata is a lightweight, standalone C++ memory placement and allocation utility 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!NOTE]
-> Strata is under active development. Phase 2 provides the raw allocation engine; typed ownership, diagnostics, STL allocators, and optional FreeRTOS integration are planned in later phases.
+> Strata is under active development. Phases 1–4 provide placement, raw allocation, diagnostics, typed storage, and unique ownership primitives. STL allocators and optional FreeRTOS integration are planned in later phases.
 
 ## Design goals
 
@@ -15,7 +15,7 @@ Strata is a lightweight, standalone C++ memory placement and allocation utility 
 - **Explicit fallback semantics** — callers can distinguish preference from requirement.
 - **Platform-owned mechanics** — ESP-IDF, FreeRTOS, and other platform details stay behind Strata boundaries.
 - **Infrastructure, not orchestration** — Strata may provide low-level FreeRTOS memory helpers later, but Worker remains the high-level job/task framework.
-- **Deterministic failure** — ordinary allocation APIs return `nullptr`; they do not require exceptions or abort-on-failure behavior.
+- **Deterministic failure** — ordinary allocation APIs return null/empty results; they do not require exceptions or abort-on-failure behavior.
 
 ## Quick start
 
@@ -29,17 +29,16 @@ Strata::free(fast);
 Strata::free(bulk);
 ```
 
-For explicit alignment, use `AllocationRequest`:
+Typed ownership uses the same placement rules:
 
 ```cpp
-Strata::AllocationRequest request{
-    .sizeBytes = 1024,
-    .placement = Strata::Placement::PreferExternal,
-    .alignment = 64,
+struct State {
+    explicit State(int value) noexcept : value(value) {}
+    ~State() noexcept = default;
+    int value;
 };
 
-void *aligned = Strata::allocate(request);
-Strata::free(aligned);
+auto state = Strata::makeUnique<State>(Strata::Placement::PreferExternal, 42);
 ```
 
 ## Raw allocation API
@@ -52,16 +51,18 @@ void *Strata::reallocate(void *ptr, std::size_t newSizeBytes, Placement placemen
 void Strata::free(void *ptr) noexcept;
 ```
 
-The Phase 2 behavior is intentionally deterministic:
+The raw allocation behavior is deterministic: zero-sized requests return `nullptr`, `calloc` rejects multiplication overflow, failed reallocation leaves the original allocation valid, `free(nullptr)` is a no-op, and required placement constraints never silently degrade.
 
-- zero-byte `allocate` and zero-count/zero-element-size `calloc` return `nullptr`;
-- `calloc` rejects size multiplication overflow;
-- alignment must be a non-zero power of two; unsupported alignments fail with `nullptr`;
-- `reallocate(nullptr, size, placement)` behaves like `allocate(size, placement)`;
-- `reallocate(ptr, 0, placement)` frees `ptr` and returns `nullptr`;
-- failed `reallocate` leaves the original allocation valid;
-- `free(nullptr)` is a no-op;
-- over-aligned allocations from `AllocationRequest` must currently be released with `Strata::free`; passing them to `Strata::reallocate` is not supported in Phase 2 because portable reallocators do not preserve arbitrary alignment metadata.
+## Typed storage and ownership
+
+Phase 4 adds:
+
+- `allocateArray<T>(count, placement)` for overflow-safe, correctly aligned **raw typed storage**;
+- `create<T>(placement, args...)` and `destroy(ptr)` for single-object lifetime management;
+- `Deleter<T>` and `UniquePtr<T>` for Strata-backed unique ownership;
+- `makeUnique<T>(placement, args...)` for allocation, construction, and RAII ownership in one operation.
+
+`allocateArray<T>()` does not construct elements and `Strata::free()` does not run array element destructors. Object helpers require non-throwing construction/destruction so ordinary embedded failure remains a null/empty result rather than relying on exception cleanup.
 
 ## Public terminology
 
@@ -76,18 +77,12 @@ The Phase 2 behavior is intentionally deterministic:
 
 ### Region
 
-`Region` describes where memory actually resides:
-
-- `Unknown`
-- `Internal`
-- `External`
-
-Placement is a request. Region is an observed result. Region introspection arrives in Phase 3.
+`Region` describes where memory actually resides: `Unknown`, `Internal`, or `External`. Placement is a request; region is an observed result.
 
 ## Platform model
 
-- **Generic** — `Default`, `Internal`, and `PreferExternal` use the standard process heap. Because the generic backend has no external-memory provider, `RequireExternal` returns `nullptr`.
-- **ESP32** — `Default` maps to the normal 8-bit capable heap, `Internal` requires internal 8-bit capable memory, and external placement maps to ESP-IDF's external-memory heap capability. `PreferExternal` retries against internal memory only after the external attempt fails.
+- **Generic** — `Default`, `Internal`, and `PreferExternal` use the standard process heap. Because the generic backend has no external-memory provider, `RequireExternal` returns `nullptr`. Pointer regions and non-portable heap statistics remain explicitly unavailable/unknown.
+- **ESP32** — placement maps to ESP-IDF heap capabilities, region introspection uses native memory-range helpers, and internal/external heap diagnostics come from capability-specific heap statistics. `PreferExternal` retries internal memory only after the external attempt fails.
 
 ESP32 external memory remains subject to the platform's cache, flash-operation, DMA, ISR, and task-stack restrictions. Strata does not make external memory safe for contexts where the platform itself forbids it.
 
@@ -116,6 +111,8 @@ Arduino/libraries/Strata
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md) — architectural boundaries, allocation semantics, and platform mapping.
+- [`docs/diagnostics.md`](docs/diagnostics.md) — region introspection, support queries, and heap statistics.
+- [`docs/typed-ownership.md`](docs/typed-ownership.md) — typed raw storage, object lifetime, and RAII ownership.
 - [`docs/TODO.md`](docs/TODO.md) — complete phased implementation and migration roadmap.
 
 ## Compatibility
@@ -127,8 +124,8 @@ Arduino/libraries/Strata
 | ESP32 backend | Arduino ESP32 / ESP-IDF-compatible build environment |
 | External memory | ESP32 external RAM through ESP-IDF heap capabilities |
 | Dependencies | none |
-| Exceptions | not required by production allocation APIs |
-| Status | Early-stage `0.1.0`; raw allocation engine available |
+| Exceptions | not required by production APIs; typed lifetime helpers require non-throwing constructors/destructors |
+| Status | Early-stage `0.1.0`; Phase 4 typed ownership available |
 
 ## ZekStack adoption
 

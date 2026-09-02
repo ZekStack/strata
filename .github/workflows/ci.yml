@@ -69,6 +69,18 @@ jobs:
             -o build/diagnostics-contract-test
           ./build/diagnostics-contract-test
 
+      - name: Compile and run typed ownership contract
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            -Isrc \
+            test/host/typed_contract_test.cpp \
+            src/strata/Allocation.cpp \
+            src/strata/Diagnostics.cpp \
+            src/strata/internal/PlatformGeneric.cpp \
+            src/strata/internal/PlatformEsp32.cpp \
+            -o build/typed-contract-test
+          ./build/typed-contract-test
+
       - name: Compile and run ESP32 allocation backend contract
         run: |
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -148,6 +160,15 @@ jobs:
       - name: Build Diagnostics example
         run: |
           pio ci examples/Diagnostics \
+            --board ${{ matrix.board }} \
+            --lib="." \
+            --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \
+            --project-option "build_unflags=-std=gnu++11" \
+            --project-option "build_flags=-std=gnu++20"
+
+      - name: Build TypedOwnership example
+        run: |
+          pio ci examples/TypedOwnership \
             --board ${{ matrix.board }} \
             --lib="." \
             --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \

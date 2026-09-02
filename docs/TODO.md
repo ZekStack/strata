@@ -47,13 +47,13 @@ This document is the implementation checklist for Strata itself and the later Ze
 
 ## Phase 4 — Typed objects and RAII primitives
 
-- [ ] Add overflow-safe `allocateArray<T>()`.
-- [ ] Define whether array allocation constructs objects or provides raw typed storage; keep the behavior explicit.
-- [ ] Add `create<T>(placement, args...)` using placement construction.
-- [ ] Add `destroy<T>()`.
-- [ ] Add `Deleter<T>` and Strata-owned unique-pointer support.
-- [ ] Add `makeUnique<T>()`.
-- [ ] Test constructors, destructors, move-only objects, alignment, and OOM behavior.
+- [x] Add overflow-safe `allocateArray<T>()`.
+- [x] Define whether array allocation constructs objects or provides raw typed storage; keep the behavior explicit.
+- [x] Add `create<T>(placement, args...)` using placement construction.
+- [x] Add `destroy<T>()`.
+- [x] Add `Deleter<T>` and Strata-owned unique-pointer support.
+- [x] Add `makeUnique<T>()`.
+- [x] Test constructors, destructors, move-only objects, alignment, and OOM behavior.
 
 ## Phase 5 — Standard allocator and STL support
 

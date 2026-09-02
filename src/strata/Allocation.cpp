@@ -53,6 +53,7 @@ void *allocate(const AllocationRequest &request) noexcept {
 
 	if (
 		request.sizeBytes == 0 ||
+		!validPlacement(request.placement) ||
 		!isValidAlignment(request.alignment) ||
 		!validCapabilities(request.capabilities)) {
 #if STRATA_ENABLE_ADVANCED_DIAGNOSTICS
@@ -79,7 +80,7 @@ void *calloc(std::size_t count, std::size_t sizeBytes, Placement placement) noex
 	recordAttempt(requestedBytes, placement);
 #endif
 
-	if (count == 0 || sizeBytes == 0 || overflow) {
+	if (count == 0 || sizeBytes == 0 || overflow || !validPlacement(placement)) {
 #if STRATA_ENABLE_ADVANCED_DIAGNOSTICS
 		recordResult(requestedBytes, placement, nullptr, true);
 #endif
@@ -106,6 +107,13 @@ void *reallocate(void *ptr, std::size_t newSizeBytes, Placement placement) noexc
 #if STRATA_ENABLE_ADVANCED_DIAGNOSTICS
 	recordAttempt(newSizeBytes, placement);
 #endif
+	if (!validPlacement(placement)) {
+#if STRATA_ENABLE_ADVANCED_DIAGNOSTICS
+		recordResult(newSizeBytes, placement, nullptr, true);
+#endif
+		return nullptr;
+	}
+
 	auto *resized = Internal::reallocate(ptr, newSizeBytes, placement);
 #if STRATA_ENABLE_ADVANCED_DIAGNOSTICS
 	recordResult(newSizeBytes, placement, resized);

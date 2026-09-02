@@ -38,7 +38,21 @@ void free(void *ptr) noexcept;
 
 ## Diagnostics
 
-`MemoryStats` exposes available total, free, minimum-free, and largest-free-block values where the platform can provide them.
+`MemoryStats` exposes optional platform heap totals, free/minimum-free/largest-block values, plus derived current and peak used bytes per region.
+
+Advanced allocation diagnostics are compile-time opt-in with `STRATA_ENABLE_ADVANCED_DIAGNOSTICS=1`:
+
+```cpp
+if (Strata::advancedDiagnosticsEnabled()) {
+    auto total = Strata::allocationDiagnostics();
+    auto preferred = Strata::allocationDiagnostics(Strata::Placement::PreferExternal);
+    Strata::resetAllocationDiagnostics();
+}
+```
+
+`AllocationDiagnostics` reports attempts, successes, failures, invalid requests, preferred-external fallbacks, and requested/successful/failed request bytes. Disabled builds retain the query API but return zeroed counters.
+
+See `diagnostics.md` for precise counter semantics, concurrency, and the no-registry design boundary.
 
 ## Typed ownership
 
@@ -102,7 +116,7 @@ See `arduinojson.md` for placement, failure, lifetime, and PSRAM details.
 
 ## Stable API boundary
 
-Phase 12 establishes the current API as the stable base for ecosystem migrations. Core public headers remain standard-C++ and platform-neutral; FreeRTOS, ArduinoJson, PMR, and ESP32 implementation types stay behind explicit integration/backend boundaries.
+Phase 12 established the core API as the stable base for ecosystem migrations. The completed `v0.1.0` implementation roadmap adds advanced diagnostics without weakening that boundary.
 
 The following semantic contracts are intentionally protected by tests and CI:
 
@@ -111,6 +125,7 @@ The following semantic contracts are intentionally protected by tests and CI:
 - ordinary core APIs remain usable with exceptions disabled;
 - allocation failure does not use abort/terminate as normal control flow;
 - optional integrations are not pulled into `Strata.h`;
-- platform-specific allocator flags do not become part of the core public vocabulary.
+- platform-specific allocator flags do not become part of the core public vocabulary;
+- advanced diagnostics remain optional and do not require an allocation registry.
 
 See `architecture.md` for the layering contract and `migration.md` for ecosystem adoption recipes.

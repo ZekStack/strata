@@ -16,7 +16,8 @@ It gives applications and libraries one vocabulary for allocation intent while p
 - **Typed ownership** — raw allocation, typed construction, unique ownership, shared ownership, and move-only buffers use the same placement model.
 - **STL integration** — placement-aware allocators and container helpers preserve allocation intent.
 - **PMR integration** — use the same placement policies through standard polymorphic allocators and nested PMR containers.
-- **Runtime diagnostics** — inspect actual memory regions and platform heap statistics.
+- **Runtime diagnostics** — inspect actual memory regions, heap statistics, and current/peak region usage.
+- **Optional advanced diagnostics** — opt into allocation/failure/fallback counters without a global allocation registry.
 - **Optional FreeRTOS memory primitives** — explicitly place task stacks and queue item storage while keeping FreeRTOS out of the core headers.
 - **Optional ArduinoJson allocation** — route ArduinoJson 7 document memory through the same Strata placement policies.
 - **Standalone core** — Strata does not depend on other ZekStack libraries.
@@ -105,7 +106,8 @@ values.push_back(42);
 - Tasks that can execute while flash/cache is disabled should keep their stacks in internal memory.
 - ISR-accessible Strata queues require internal item storage; external queue storage is task-only.
 - ArduinoJson integration is opt-in, targets ArduinoJson 7, and requires the Strata allocator object to outlive the `JsonDocument` using it.
-- The Phase 12 core vocabulary and placement/failure semantics form the stable base for ZekStack ecosystem migrations.
+- Advanced allocation counters are disabled by default; enable them build-wide with `STRATA_ENABLE_ADVANCED_DIAGNOSTICS=1`.
+- Phase 12 established the stable core vocabulary and placement/failure semantics; Advanced diagnostics is an additive optional layer on top of that base.
 
 ## Examples
 
@@ -136,12 +138,12 @@ examples/Basic
 | [`docs/getting-started.md`](docs/getting-started.md) | Installation, first allocation, and placement choices. |
 | [`docs/placement.md`](docs/placement.md) | Stable placement, region, fallback, reallocation, and safety semantics. |
 | [`docs/migration.md`](docs/migration.md) | Recipes for migrating raw allocation, PSRAM helpers, containers, tasks, queues, and adapters. |
-| [`docs/configuration.md`](docs/configuration.md) | Build requirements, backend selection, PSRAM, exceptions, and optional integrations. |
+| [`docs/configuration.md`](docs/configuration.md) | Build requirements, backend selection, PSRAM, diagnostics, exceptions, and optional integrations. |
 | [`docs/api.md`](docs/api.md) | Public API overview and include boundaries. |
 | [`docs/examples.md`](docs/examples.md) | Guide to the included sketches. |
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | Common allocation, PSRAM, capability, and integration issues. |
 | [`docs/architecture.md`](docs/architecture.md) | Architectural boundaries, stable vocabulary, platform mapping, and failure contracts. |
-| [`docs/diagnostics.md`](docs/diagnostics.md) | Region introspection and heap statistics. |
+| [`docs/diagnostics.md`](docs/diagnostics.md) | Region/heap introspection plus optional allocation/failure/fallback counters. |
 | [`docs/typed-ownership.md`](docs/typed-ownership.md) | Typed raw storage, object lifetime, and unique ownership. |
 | [`docs/stl.md`](docs/stl.md) | Stateful allocator semantics and STL helpers. |
 | [`docs/pmr.md`](docs/pmr.md) | Optional placement-aware `std::pmr::memory_resource` integration. |
@@ -150,8 +152,9 @@ examples/Basic
 | [`docs/freertos-tasks.md`](docs/freertos-tasks.md) | Optional task-stack placement and static task creation. |
 | [`docs/freertos-queues.md`](docs/freertos-queues.md) | Optional typed queue storage placement and ISR safety. |
 | [`docs/arduinojson.md`](docs/arduinojson.md) | Optional ArduinoJson 7 custom allocator integration. |
-| [`docs/roadmap.md`](docs/roadmap.md) | Remaining advanced Strata work after the stable foundational phases. |
+| [`docs/roadmap.md`](docs/roadmap.md) | Completed `v0.1.0` roadmap and post-release planning boundary. |
 | [`docs/ecosystem-adoption.md`](docs/ecosystem-adoption.md) | Planned adoption across ZekStack and Core. |
+| [`docs/releasing.md`](docs/releasing.md) | Version/tag requirements and the validated GitHub release flow. |
 
 ## API overview
 
@@ -171,6 +174,17 @@ auto stats = Strata::memoryStats(Strata::Region::Internal);
 
 Strata::free(raw);
 Strata::free(dma);
+```
+
+With advanced diagnostics enabled at build time:
+
+```cpp
+auto total = Strata::allocationDiagnostics();
+auto preferred = Strata::allocationDiagnostics(Strata::Placement::PreferExternal);
+
+Serial.printf("failures=%u fallbacks=%u\n",
+    static_cast<unsigned>(total.failures),
+    static_cast<unsigned>(preferred.preferredExternalFallbacks));
 ```
 
 Optional PMR integration:
@@ -227,8 +241,9 @@ auto queue = Strata::FreeRTOS::Queue<Event>::create({
 | Optional PMR integration | Standard-library `<memory_resource>` with exceptions enabled |
 | Optional FreeRTOS integration | FreeRTOS with static allocation enabled |
 | Optional ArduinoJson integration | ArduinoJson 7; CI compatibility target 7.4.3 |
+| Advanced diagnostics | Optional compile-time counters; disabled by default |
 | Exceptions | Not required by core APIs; STL/PMR standard allocator surfaces follow standard semantics |
-| Status | Early-stage `0.1.0`; Phase 12 stable API base complete |
+| Status | `v0.1.0` release-ready; implementation roadmap complete |
 
 ## License
 
@@ -236,4 +251,4 @@ MIT — see [`LICENSE.md`](LICENSE.md).
 
 ## ZekStack
 
-Part of the ZekStack library stack. The Phase 12 contracts are the stable low-level memory-placement base for measured, subsystem-by-subsystem adoption by other ZekStack libraries and Core.
+Part of the ZekStack library stack. The `v0.1.0` contracts are the stable low-level memory-placement base for measured, subsystem-by-subsystem adoption by other ZekStack libraries and Core.

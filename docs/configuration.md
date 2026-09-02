@@ -30,6 +30,20 @@ ESP32 external placement requires PSRAM to be available in the active board conf
 - `RequireExternal` fails instead of degrading.
 - `regionOf()` reports where a successful allocation actually resides.
 
+## Advanced diagnostics
+
+Advanced allocation/failure/fallback counters are compile-time opt-in and disabled by default. Enable them with:
+
+```ini
+build_flags =
+    -std=gnu++20
+    -DSTRATA_ENABLE_ADVANCED_DIAGNOSTICS=1
+```
+
+The setting must be consistent across the Strata library and consuming translation units. When disabled, allocation-path instrumentation is compiled out and diagnostic counter queries return zeros.
+
+Region support queries and `memoryStats()` remain available regardless of this flag. See `diagnostics.md` for counter semantics and overhead details.
+
 ## Alignment and capabilities
 
 `AllocationRequest` combines size, placement, alignment, and required capabilities. Invalid alignment or unsatisfied required capabilities cause allocation failure.

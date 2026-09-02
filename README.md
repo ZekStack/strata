@@ -2,7 +2,7 @@
 
 Strata is a portable C++20 memory placement and allocation library with first-class ESP32 internal-RAM and PSRAM support.
 
-It gives applications and libraries one vocabulary for allocation intent while platform-specific backends own the underlying memory mechanics. Core allocation APIs remain standard-C++ compatible, while ESP32 and optional FreeRTOS integrations add platform-specific capabilities without leaking them into the core contract.
+It gives applications and libraries one vocabulary for allocation intent while platform-specific backends own the underlying memory mechanics. Core allocation APIs remain standard-C++ compatible, while ESP32, optional FreeRTOS, and optional ArduinoJson integrations add platform-specific capabilities without leaking them into the core contract.
 
 [![CI](https://github.com/ZekStack/Strata/actions/workflows/ci.yml/badge.svg)](https://github.com/ZekStack/Strata/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ZekStack/Strata?sort=semver)](https://github.com/ZekStack/Strata/releases)
@@ -17,6 +17,7 @@ It gives applications and libraries one vocabulary for allocation intent while p
 - **STL integration** — placement-aware allocators and container helpers preserve allocation intent.
 - **Runtime diagnostics** — inspect actual memory regions and platform heap statistics.
 - **Optional FreeRTOS memory primitives** — explicitly place task stacks and queue item storage while keeping FreeRTOS out of the core headers.
+- **Optional ArduinoJson allocation** — route ArduinoJson 7 document memory through the same Strata placement policies.
 - **Standalone core** — Strata does not depend on other ZekStack libraries.
 
 ## Install
@@ -36,6 +37,14 @@ build_flags =
     -std=gnu++20
 build_unflags =
     -std=gnu++11
+```
+
+ArduinoJson users should add ArduinoJson separately because it remains an optional integration:
+
+```ini
+lib_deps =
+    https://github.com/ZekStack/Strata.git
+    bblanchon/ArduinoJson@^7.4.3
 ```
 
 ### Arduino IDE
@@ -93,6 +102,7 @@ values.push_back(42);
 - FreeRTOS task and queue integrations are opt-in and require static allocation support.
 - Tasks that can execute while flash/cache is disabled should keep their stacks in internal memory.
 - ISR-accessible Strata queues require internal item storage; external queue storage is task-only.
+- ArduinoJson integration is opt-in, targets ArduinoJson 7, and requires the Strata allocator object to outlive the `JsonDocument` using it.
 
 ## Examples
 
@@ -108,6 +118,7 @@ values.push_back(42);
 | `Capabilities` | DMA/executable capability requirements. |
 | `FreeRTOSTask` | Optional placed FreeRTOS task stacks and diagnostics. |
 | `FreeRTOSQueue` | Optional typed FreeRTOS queues with placed item storage. |
+| `ArduinoJson` | Optional ArduinoJson 7 document allocation through Strata placement. |
 
 Start with:
 
@@ -120,10 +131,10 @@ examples/Basic
 | Document | Description |
 | --- | --- |
 | [`docs/getting-started.md`](docs/getting-started.md) | Installation, first allocation, and placement choices. |
-| [`docs/configuration.md`](docs/configuration.md) | Build requirements, backend selection, PSRAM, exceptions, and FreeRTOS options. |
+| [`docs/configuration.md`](docs/configuration.md) | Build requirements, backend selection, PSRAM, exceptions, and optional integrations. |
 | [`docs/api.md`](docs/api.md) | Public API overview and include boundaries. |
 | [`docs/examples.md`](docs/examples.md) | Guide to the included sketches. |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Common allocation, PSRAM, capability, and task-memory issues. |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Common allocation, PSRAM, capability, and integration issues. |
 | [`docs/architecture.md`](docs/architecture.md) | Architectural boundaries and platform mapping. |
 | [`docs/diagnostics.md`](docs/diagnostics.md) | Region introspection and heap statistics. |
 | [`docs/typed-ownership.md`](docs/typed-ownership.md) | Typed raw storage, object lifetime, and unique ownership. |
@@ -132,6 +143,7 @@ examples/Basic
 | [`docs/capabilities.md`](docs/capabilities.md) | Required DMA/executable constraints and safety boundaries. |
 | [`docs/freertos-tasks.md`](docs/freertos-tasks.md) | Optional task-stack placement and static task creation. |
 | [`docs/freertos-queues.md`](docs/freertos-queues.md) | Optional typed queue storage placement and ISR safety. |
+| [`docs/arduinojson.md`](docs/arduinojson.md) | Optional ArduinoJson 7 custom allocator integration. |
 | [`docs/roadmap.md`](docs/roadmap.md) | Remaining Strata implementation roadmap. |
 | [`docs/ecosystem-adoption.md`](docs/ecosystem-adoption.md) | Planned adoption across ZekStack and Core. |
 
@@ -153,6 +165,17 @@ auto stats = Strata::memoryStats(Strata::Region::Internal);
 
 Strata::free(raw);
 Strata::free(dma);
+```
+
+Optional ArduinoJson integration:
+
+```cpp
+#include <ArduinoJson.h>
+#include <strata/arduinojson/Allocator.h>
+
+Strata::ArduinoJson::Allocator allocator{Strata::Placement::PreferExternal};
+ArduinoJson::JsonDocument document{&allocator};
+document["library"] = "Strata";
 ```
 
 Optional FreeRTOS integrations:
@@ -186,8 +209,9 @@ auto queue = Strata::FreeRTOS::Queue<Event>::create({
 | External memory | ESP32 PSRAM through ESP-IDF heap capabilities |
 | Core dependencies | none |
 | Optional FreeRTOS integration | FreeRTOS with static allocation enabled |
+| Optional ArduinoJson integration | ArduinoJson 7; CI compatibility target 7.4.3 |
 | Exceptions | Not required by core APIs; STL allocator follows standard semantics |
-| Status | Early-stage `0.1.0`; Phase 9 queue-memory primitives available |
+| Status | Early-stage `0.1.0`; Phase 10 ArduinoJson adapter available |
 
 ## License
 

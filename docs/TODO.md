@@ -57,14 +57,14 @@ This document is the implementation checklist for Strata itself and the later Ze
 
 ## Phase 5 — Standard allocator and STL support
 
-- [ ] Implement stateful `Strata::Allocator<T>`.
-- [ ] Define allocator equality and propagation traits correctly for differing placements.
-- [ ] Validate vector/string/map-compatible allocator behavior.
-- [ ] Add `Vector<T>` and `String` convenience aliases only where they remain transparent STL types.
-- [ ] Add ergonomic container factories if allocator construction is otherwise too verbose.
-- [ ] Add `makeShared<T>()` via `std::allocate_shared()` so object and control block share placement intent.
-- [ ] Explicitly document/test allocation failure behavior with exceptions enabled and disabled.
-- [ ] Add STL examples and host tests.
+- [x] Implement stateful `Strata::Allocator<T>`.
+- [x] Define allocator equality and propagation traits correctly for differing placements.
+- [x] Validate vector/string/map-compatible allocator behavior.
+- [x] Add `Vector<T>` and `String` convenience aliases only where they remain transparent STL types.
+- [x] Add ergonomic container factories if allocator construction is otherwise too verbose.
+- [x] Add `makeShared<T>()` via `std::allocate_shared()` so object and control block share placement intent.
+- [x] Explicitly document/test allocation failure behavior with exceptions enabled and disabled.
+- [x] Add STL examples and host tests.
 
 ## Phase 6 — Owned `Buffer`
 

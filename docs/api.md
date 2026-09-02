@@ -122,3 +122,15 @@ See `arduinojson.md` for placement, failure, lifetime, and PSRAM details.
 ## Stable API boundary
 
 Phase 12 established the core API as the stable base for ecosystem migrations. The completed `v0.1.0` implementation roadmap adds advanced diagnostics and release hardening without weakening that boundary.
+
+The following semantic contracts are intentionally protected by tests and CI:
+
+- placement and observed region remain distinct;
+- required placement/capability constraints never silently weaken;
+- ordinary core APIs remain usable with exceptions disabled;
+- allocation failure does not use abort/terminate as normal control flow;
+- optional integrations are not pulled into `Strata.h`;
+- platform-specific allocator flags do not become part of the core public vocabulary;
+- advanced diagnostics remain optional and do not require an allocation registry.
+
+See `architecture.md` for the layering contract and `migration.md` for ecosystem adoption recipes.

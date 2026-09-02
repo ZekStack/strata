@@ -12,6 +12,7 @@ Optional integrations are intentionally separate:
 #include <strata/freertos/Task.h>
 #include <strata/freertos/Queue.h>
 #include <strata/arduinojson/Allocator.h>
+#include <strata/pmr/MemoryResource.h>
 ```
 
 ## Placement and regions
@@ -48,6 +49,21 @@ The typed helpers cover raw typed arrays, placement construction/destruction, un
 ## STL
 
 `Strata::Allocator<T>` is a stateful standard allocator carrying placement intent. Convenience aliases and factories provide placement-aware vectors, strings, maps, and shared objects without hiding standard-library types.
+
+## PMR
+
+`Strata::MemoryResource` implements `std::pmr::memory_resource` and applies one Strata `Placement` policy to every allocation requested through that resource.
+
+```cpp
+Strata::MemoryResource resource{Strata::Placement::PreferExternal};
+std::pmr::vector<std::pmr::string> values{&resource};
+```
+
+Nested PMR-aware containers propagate the same resource through standard polymorphic allocator semantics. Allocation size and alignment are forwarded to Strata unchanged, and deallocation is forwarded to `Strata::free()`.
+
+PMR is opt-in through `<strata/pmr/MemoryResource.h>`. The header requires standard-library `<memory_resource>` support and exceptions because `std::pmr::memory_resource` reports allocation failure with `std::bad_alloc`.
+
+See `pmr.md` for placement, lifetime, exception, and portability details.
 
 ## Capabilities
 

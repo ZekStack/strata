@@ -2,13 +2,6 @@
 
 This document tracks remaining Strata library work. Completed functionality belongs in `CHANGELOG.md`; ecosystem migration work is tracked separately in `ecosystem-adoption.md`.
 
-## Phase 11 — PMR support
-
-- [ ] Add `Strata::MemoryResource` based on `std::pmr::memory_resource` where supported.
-- [ ] Preserve placement policy through PMR allocations.
-- [ ] Test nested PMR containers and allocator propagation.
-- [ ] Keep PMR optional for callers that only need core allocation APIs.
-
 ## Phase 12 — API stability and release hardening
 
 - [ ] Add dedicated placement/fallback documentation if the existing API docs become too dense.

@@ -42,6 +42,16 @@ Raw allocation, typed ownership, and `Buffer` do not require exceptions for ordi
 
 `Strata::Allocator<T>` follows the standard allocator contract. With exceptions enabled, allocation failure throws `std::bad_alloc`. With exceptions disabled, it returns `nullptr`; standard containers are not required to recover from that condition.
 
+The optional PMR adapter requires exceptions because `std::pmr::memory_resource` uses `std::bad_alloc` for allocation failure. This requirement applies only to translation units that include `<strata/pmr/MemoryResource.h>`.
+
+## PMR integration
+
+PMR support is opt-in through `<strata/pmr/MemoryResource.h>` and requires a standard library that provides `<memory_resource>`.
+
+`Strata::MemoryResource` carries one placement policy and forwards PMR allocation size/alignment directly to Strata. Nested PMR-aware containers propagate the resource using standard polymorphic allocator semantics.
+
+Keep the `MemoryResource` object alive for at least as long as every PMR container or allocator that references it.
+
 ## FreeRTOS integration
 
 FreeRTOS support is opt-in through `<strata/freertos/Task.h>` and `<strata/freertos/Queue.h>` and requires static allocation support.

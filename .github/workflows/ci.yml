@@ -96,6 +96,9 @@ jobs:
           g++ $common_flags -Itests/host/arduinojson_fakes tests/host/arduinojson_allocator_contract_test.cpp $common_sources -o build/arduinojson-allocator-contract-test
           ./build/arduinojson-allocator-contract-test
 
+          g++ $common_flags tests/host/pmr_memory_resource_contract_test.cpp $common_sources -o build/pmr-memory-resource-contract-test
+          ./build/pmr-memory-resource-contract-test
+
       - name: Build and run ESP32 backend contracts
         run: |
           set -e
@@ -123,6 +126,9 @@ jobs:
 
           g++ $flags -Itests/host/arduinojson_fakes tests/host/esp32_arduinojson_allocator_backend_test.cpp $sources -o build/esp32-arduinojson-allocator-backend-test
           ./build/esp32-arduinojson-allocator-backend-test
+
+          g++ $flags tests/host/esp32_pmr_memory_resource_backend_test.cpp $sources -o build/esp32-pmr-memory-resource-backend-test
+          ./build/esp32-pmr-memory-resource-backend-test
 
   build-examples:
     runs-on: ubuntu-latest

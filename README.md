@@ -1,117 +1,34 @@
 # Strata
 
-Strata is a lightweight, standalone C++ memory placement and allocation utility library. It gives applications and libraries one portable vocabulary for expressing memory intent while platform-specific backends own the actual memory mechanics.
+Strata is a portable C++20 memory placement and allocation library with first-class ESP32 internal-RAM and PSRAM support.
+
+It gives applications and libraries one vocabulary for allocation intent while platform-specific backends own the underlying memory mechanics. Core allocation APIs remain standard-C++ compatible, while ESP32 and optional FreeRTOS integrations add platform-specific capabilities without leaking them into the core contract.
 
 [![CI](https://github.com/ZekStack/Strata/actions/workflows/ci.yml/badge.svg)](https://github.com/ZekStack/Strata/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/ZekStack/Strata?sort=semver)](https://github.com/ZekStack/Strata/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
-> [!NOTE]
-> Strata is under active development. Phases 1–8 provide placement, raw allocation, diagnostics, typed ownership, placement-aware STL allocation, owned buffers, required allocation capabilities, and optional FreeRTOS task-stack/task primitives.
+## Why use Strata?
 
-## Design goals
-
-- **Standalone** — Strata has no dependency on other ZekStack libraries.
-- **Portable vocabulary** — public APIs describe memory intent instead of leaking ESP32-specific PSRAM details.
-- **Explicit fallback semantics** — callers can distinguish preference from requirement.
-- **Required capabilities stay required** — DMA/executable constraints never silently disappear during placement fallback.
-- **Optional RTOS integration** — core Strata headers have no FreeRTOS dependency; task integration is opt-in.
-- **Infrastructure, not orchestration** — Worker remains the preferred high-level job/task framework.
-- **Deterministic core failure** — raw and typed ownership APIs return null/empty results; the standard allocator adapter follows STL exception semantics when exceptions are enabled.
-
-## Quick start
-
-```cpp
-#include <Strata.h>
-
-void *bulk = Strata::allocate(4096, Strata::Placement::PreferExternal);
-
-void *dma = Strata::allocate(Strata::AllocationRequest{
-    .sizeBytes = 1024,
-    .placement = Strata::Placement::Internal,
-    .alignment = 32,
-    .capabilities = Strata::Capability::Dma,
-});
-
-Strata::free(bulk);
-Strata::free(dma);
-```
-
-Owned byte buffers preserve their requested placement across resize:
-
-```cpp
-Strata::Buffer buffer(4096, Strata::Placement::PreferExternal);
-buffer.resize(8192);
-```
-
-Placement-aware STL containers use the same memory policy:
-
-```cpp
-auto values = Strata::makeVector<int>(Strata::Placement::PreferExternal);
-values.push_back(42);
-```
-
-## Core APIs
-
-Strata provides raw allocation, diagnostics, typed storage/ownership, `Buffer`, a stateful `Allocator<T>` standard allocator adapter, and capability-constrained `AllocationRequest` allocations.
-
-Required placement constraints never silently degrade. `PreferExternal` may fall back to internal memory, but any requested capabilities remain mandatory during fallback.
-
-## Capabilities
-
-`Capability` is a bitmask of memory properties that the returned allocation must satisfy:
-
-- `Capability::Dma`
-- `Capability::Executable`
-
-Use `supports(Capability)` to query whether the current platform exposes memory matching a complete capability set. On ESP32, these map to `MALLOC_CAP_DMA` and `MALLOC_CAP_EXEC`. Generic builds deliberately report them unsupported rather than pretending the ordinary process heap satisfies embedded hardware constraints.
-
-Capability support is not a substitute for subsystem safety rules. DMA peripherals may impose additional alignment/ownership restrictions, allocation APIs are not automatically ISR-safe, and external RAM remains unsuitable during cache-disabled flash windows.
-
-## Optional FreeRTOS task integration
-
-FreeRTOS support is opt-in through:
-
-```cpp
-#include <strata/freertos/Task.h>
-```
-
-`Strata::FreeRTOS::TaskStack` owns explicitly placed stack memory and exposes requested bytes, requested placement, and actual region. `Strata::FreeRTOS::Task` uses FreeRTOS static task creation so Strata can supply that stack while keeping the task control block internal.
-
-All public stack sizes and high-water-mark values are normalized to bytes. `TaskConfig` contains only task name, stack bytes, stack placement, priority, and affinity. This layer intentionally does not implement jobs, callbacks, retry, cancellation, pools, or scheduling policy; ZekStack applications should continue using Worker for high-level orchestration.
-
-External task stacks remain subject to platform/cache restrictions. Tasks that may run during cache-disabled flash operations should use internal stack placement.
-
-## Allocation failure and exceptions
-
-Raw allocation, `Buffer`, and typed ownership APIs preserve deterministic embedded behavior by returning failure without requiring exceptions.
-
-`Strata::Allocator<T>` follows standard allocator expectations: with exceptions enabled, allocation failure throws `std::bad_alloc`. With exceptions disabled, it returns `nullptr`; standard containers are not required to recover safely from that condition.
-
-## Public terminology
-
-### Placement
-
-| Value | Contract |
-| --- | --- |
-| `Default` | Use the platform's normal allocator and behavior. |
-| `Internal` | Memory must come from the platform's internal/default-local memory region. |
-| `PreferExternal` | Prefer external memory and fall back to internal memory if the full request can still be satisfied. |
-| `RequireExternal` | External memory is mandatory; the operation fails when it cannot be satisfied. |
-
-### Region
-
-`Region` describes where memory actually resides: `Unknown`, `Internal`, or `External`. Placement is a request; region is an observed result.
-
-## Platform model
-
-- **Generic** — normal/default/internal allocations use the standard process heap. External placement and embedded hardware capabilities are unsupported.
-- **ESP32** — placement and capabilities map to ESP-IDF heap capabilities, region introspection uses native memory-range helpers, and internal/external heap diagnostics come from capability-specific heap statistics.
+- **Explicit placement** — request default, internal, preferred-external, or required-external memory.
+- **Portable vocabulary** — application code describes memory intent instead of ESP-IDF heap flags.
+- **Strict capability requirements** — DMA and executable requirements never silently degrade.
+- **Typed ownership** — raw allocation, typed construction, unique ownership, shared ownership, and move-only buffers use the same placement model.
+- **STL integration** — placement-aware allocators and container helpers preserve allocation intent.
+- **Runtime diagnostics** — inspect actual memory regions and platform heap statistics.
+- **Optional FreeRTOS task memory** — explicitly place task stacks while keeping FreeRTOS out of the core headers.
+- **Standalone core** — Strata does not depend on other ZekStack libraries.
 
 ## Install
 
 ### PlatformIO
 
 ```ini
+[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino
+
 lib_deps =
     https://github.com/ZekStack/Strata.git
 
@@ -121,16 +38,135 @@ build_unflags =
     -std=gnu++11
 ```
 
+### Arduino IDE
+
+Strata is not published to Arduino Library Manager yet.
+
+Install it by downloading the repository ZIP or cloning it into the Arduino libraries directory:
+
+```text
+Arduino/libraries/Strata
+```
+
+## Quick start
+
+```cpp
+#include <Arduino.h>
+#include <Strata.h>
+
+void setup() {
+    Serial.begin(115200);
+
+    void *bulk = Strata::allocate(4096, Strata::Placement::PreferExternal);
+    if (bulk == nullptr) {
+        Serial.println("allocation failed");
+        return;
+    }
+
+    Serial.printf("region=%u\n", static_cast<unsigned>(Strata::regionOf(bulk)));
+    Strata::free(bulk);
+}
+
+void loop() {
+    delay(1000);
+}
+```
+
+Owned buffers and STL helpers use the same placement policy:
+
+```cpp
+Strata::Buffer buffer(4096, Strata::Placement::PreferExternal);
+auto values = Strata::makeVector<int>(Strata::Placement::PreferExternal);
+values.push_back(42);
+```
+
+## Important notes
+
+> [!IMPORTANT]
+> `PreferExternal` may fall back to internal memory. `RequireExternal` never does. Capability requirements such as DMA or executable memory remain mandatory during fallback.
+
+- `Placement` describes requested policy; `Region` describes where memory actually resides.
+- Generic builds support normal process-heap allocation but deliberately report external-memory and embedded hardware capabilities as unsupported.
+- Raw allocation, typed ownership, and `Buffer` report allocation failure without requiring exceptions.
+- `Strata::Allocator<T>` follows standard allocator expectations and throws `std::bad_alloc` when exceptions are enabled.
+- External RAM is not automatically safe for DMA, ISR use, or cache-disabled flash windows.
+- FreeRTOS integration is opt-in through `<strata/freertos/Task.h>` and requires static allocation support.
+- Tasks that can execute while flash/cache is disabled should keep their stacks in internal memory.
+
+## Examples
+
+| Example | Description |
+| --- | --- |
+| `Basic` | Minimal allocation, region inspection, and cleanup. |
+| `Placement` | Placement and region terminology. |
+| `Allocation` | Raw allocation and explicit requests. |
+| `Diagnostics` | Support queries and heap statistics. |
+| `TypedOwnership` | Typed construction and ownership helpers. |
+| `STL` | Placement-aware standard-library containers. |
+| `Buffer` | Move-only owned byte buffers and resize behavior. |
+| `Capabilities` | DMA/executable capability requirements. |
+| `FreeRTOSTask` | Optional placed FreeRTOS task stacks and diagnostics. |
+
+Start with:
+
+```text
+examples/Basic
+```
+
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md) — architectural boundaries and platform mapping.
-- [`docs/diagnostics.md`](docs/diagnostics.md) — region introspection, support queries, and heap statistics.
-- [`docs/typed-ownership.md`](docs/typed-ownership.md) — typed raw storage, object lifetime, and unique ownership.
-- [`docs/stl.md`](docs/stl.md) — stateful allocator semantics and STL helpers.
-- [`docs/buffer.md`](docs/buffer.md) — move-only owned byte buffers and resize semantics.
-- [`docs/capabilities.md`](docs/capabilities.md) — required DMA/executable constraints and safety boundaries.
-- [`docs/freertos-tasks.md`](docs/freertos-tasks.md) — optional task-stack placement, static task creation, byte-unit diagnostics, and lifetime rules.
-- [`docs/TODO.md`](docs/TODO.md) — complete phased implementation and migration roadmap.
+| Document | Description |
+| --- | --- |
+| [`docs/getting-started.md`](docs/getting-started.md) | Installation, first allocation, and placement choices. |
+| [`docs/configuration.md`](docs/configuration.md) | Build requirements, backend selection, PSRAM, exceptions, and FreeRTOS options. |
+| [`docs/api.md`](docs/api.md) | Public API overview and include boundaries. |
+| [`docs/examples.md`](docs/examples.md) | Guide to the included sketches. |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Common allocation, PSRAM, capability, and task-memory issues. |
+| [`docs/architecture.md`](docs/architecture.md) | Architectural boundaries and platform mapping. |
+| [`docs/diagnostics.md`](docs/diagnostics.md) | Region introspection and heap statistics. |
+| [`docs/typed-ownership.md`](docs/typed-ownership.md) | Typed raw storage, object lifetime, and unique ownership. |
+| [`docs/stl.md`](docs/stl.md) | Stateful allocator semantics and STL helpers. |
+| [`docs/buffer.md`](docs/buffer.md) | Owned byte buffers and resize semantics. |
+| [`docs/capabilities.md`](docs/capabilities.md) | Required DMA/executable constraints and safety boundaries. |
+| [`docs/freertos-tasks.md`](docs/freertos-tasks.md) | Optional task-stack placement and static task creation. |
+| [`docs/roadmap.md`](docs/roadmap.md) | Remaining Strata implementation roadmap. |
+| [`docs/ecosystem-adoption.md`](docs/ecosystem-adoption.md) | Planned adoption across ZekStack and Core. |
+
+## API overview
+
+```cpp
+void *raw = Strata::allocate(4096, Strata::Placement::PreferExternal);
+void *dma = Strata::allocate(Strata::AllocationRequest{
+    .sizeBytes = 1024,
+    .placement = Strata::Placement::Internal,
+    .alignment = 32,
+    .capabilities = Strata::Capability::Dma,
+});
+
+Strata::Buffer buffer(4096, Strata::Placement::PreferExternal);
+auto object = Strata::makeUnique<MyType>(Strata::Placement::PreferExternal, constructorArg);
+auto values = Strata::makeVector<int>(Strata::Placement::PreferExternal);
+
+Strata::MemoryStats stats;
+Strata::memoryStats(Strata::Region::Internal, stats);
+
+Strata::free(raw);
+Strata::free(dma);
+```
+
+Optional FreeRTOS integration:
+
+```cpp
+#include <strata/freertos/Task.h>
+
+Strata::FreeRTOS::Task task = Strata::FreeRTOS::Task::create(worker, nullptr, {
+    .name = "worker",
+    .stackBytes = 4096,
+    .stackPlacement = Strata::Placement::PreferExternal,
+    .priority = 1,
+    .affinity = Strata::FreeRTOS::NoAffinity,
+});
+```
 
 ## Compatibility
 
@@ -139,15 +175,16 @@ build_unflags =
 | Language | C++20 |
 | Core API | Standard C++ |
 | ESP32 backend | Arduino ESP32 / ESP-IDF-compatible build environment |
-| External memory | ESP32 external RAM through ESP-IDF heap capabilities |
+| External memory | ESP32 PSRAM through ESP-IDF heap capabilities |
 | Core dependencies | none |
 | Optional task integration | FreeRTOS with static allocation enabled |
-| Status | Early-stage `0.1.0`; Phase 8 FreeRTOS task primitives available |
-
-## ZekStack adoption
-
-Strata is designed to become the common memory layer beneath ZekStack libraries such as Worker, Signal, Trace, Tempo, and Passage. Those migrations happen only after Strata's standalone contracts are stable and independently tested.
+| Exceptions | Not required by core APIs; STL allocator follows standard semantics |
+| Status | Early-stage `0.1.0`; Phase 8 task-memory primitives available |
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT — see [`LICENSE.md`](LICENSE.md).
+
+## ZekStack
+
+Part of the ZekStack library stack. Strata is intended to become the shared low-level memory-placement layer used by other ZekStack libraries after its standalone contracts stabilize.

@@ -86,6 +86,9 @@ jobs:
           g++ $common_flags tests/host/diagnostics_contract_test.cpp $common_sources -o build/diagnostics-contract-test
           ./build/diagnostics-contract-test
 
+          g++ $common_flags -DSTRATA_ENABLE_ADVANCED_DIAGNOSTICS=1 tests/host/advanced_diagnostics_contract_test.cpp $common_sources -o build/advanced-diagnostics-contract-test
+          ./build/advanced-diagnostics-contract-test
+
           g++ $common_flags tests/host/typed_contract_test.cpp $common_sources -o build/typed-contract-test
           ./build/typed-contract-test
 
@@ -125,6 +128,9 @@ jobs:
 
           g++ $flags tests/host/esp32_diagnostics_backend_test.cpp $sources -o build/esp32-diagnostics-backend-test
           ./build/esp32-diagnostics-backend-test
+
+          g++ $flags -DSTRATA_ENABLE_ADVANCED_DIAGNOSTICS=1 tests/host/esp32_advanced_diagnostics_backend_test.cpp $sources -o build/esp32-advanced-diagnostics-backend-test
+          ./build/esp32-advanced-diagnostics-backend-test
 
           g++ $flags tests/host/esp32_buffer_backend_test.cpp $sources -o build/esp32-buffer-backend-test
           ./build/esp32-buffer-backend-test
@@ -185,6 +191,15 @@ jobs:
               --project-option "build_unflags=-std=gnu++11" \
               --project-option "build_flags=-std=gnu++20"
           done
+      - name: Build with advanced diagnostics enabled
+        run: |
+          pio ci examples/Diagnostics \
+            --board "${{ matrix.board }}" \
+            --lib="." \
+            --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \
+            --project-option "lib_deps=bblanchon/ArduinoJson@7.4.3" \
+            --project-option "build_unflags=-std=gnu++11" \
+            --project-option "build_flags=-std=gnu++20 -DSTRATA_ENABLE_ADVANCED_DIAGNOSTICS=1"
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -204,6 +219,8 @@ jobs:
             capture && /^## / {exit}
             capture {print}
           ' CHANGELOG.md > /tmp/release-notes.md
+          test -s /tmp/release-notes.md
           gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
             --title "$GITHUB_REF_NAME" \
             --notes-file /tmp/release-notes.md

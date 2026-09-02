@@ -54,7 +54,9 @@ The public core vocabulary intentionally contains no ESP-IDF heap flags, PSRAM-s
 
 ### Diagnostics
 
-`regionOf`, `supports`, and `memoryStats` expose placement support and observed heap state without exposing native allocator APIs.
+`regionOf`, `supports`, and `memoryStats` expose placement support and observed heap state without exposing native allocator APIs. `memoryStats` also derives current/peak region usage where the platform exposes total, free, and minimum-free values.
+
+Advanced allocation counters are compile-time opt-in. When enabled they use fixed atomic counters for request/success/failure/fallback traffic; when disabled the allocation path does not update diagnostic state. No pointer registry, dynamic diagnostic allocation, or Strata-owned lock is required.
 
 ### Typed ownership
 
@@ -127,11 +129,11 @@ The stable failure rules are:
 4. `RequireExternal` is appropriate only when failure is preferable to consuming internal memory.
 5. Diagnostics distinguish requested policy from observed region.
 6. Strata has no required global initialization and no hidden mutable global default placement.
-7. Optional diagnostics must not introduce mandatory registries, locks, or allocator recursion.
+7. Advanced diagnostics are opt-in and must not introduce allocation registries, dynamic diagnostic allocation, allocator recursion, or mandatory allocation-path overhead.
 
 ## API stability boundary
 
-The Phase 12 API is the stable base for ecosystem migration. The core names and semantics to preserve are:
+Phase 12 established the stable core API for ecosystem migration. The completed `v0.1.0` roadmap adds advanced diagnostics as an additive layer while preserving these names and semantics:
 
 - `Placement`, `Region`, and `Capability`;
 - `AllocationRequest` and the raw allocation functions;
@@ -139,4 +141,4 @@ The Phase 12 API is the stable base for ecosystem migration. The core names and 
 - typed ownership, `Buffer`, `Allocator<T>`, and STL factories;
 - optional `MemoryResource`, ArduinoJson, FreeRTOS task, and FreeRTOS queue adapters behind their explicit include paths.
 
-Future work may add diagnostics and integrations, but should not make platform-specific types part of the core vocabulary or weaken existing placement/failure guarantees.
+Future work should not make platform-specific types part of the core vocabulary or weaken existing placement/failure guarantees.

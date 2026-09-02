@@ -16,5 +16,9 @@ All notable changes to Strata are documented in this file.
 - Add optional ArduinoJson 7 allocator integration with Strata placement, fallback, and strict-external semantics.
 - Add optional PMR `MemoryResource` integration with placement-aware polymorphic allocation and nested-container propagation.
 - Harden the stable API boundary with dedicated placement/fallback and migration documentation, refreshed architecture docs, core no-exception/public-API contracts, and CI audits against platform leakage and abort/terminate failure policies.
+- Add opt-in advanced allocation diagnostics with attempt/success/failure/invalid-request counters, requested-byte accounting, per-placement snapshots, preferred-external fallback counts, and reset support.
+- Add current and peak region-used byte diagnostics derived from platform heap free/minimum-free watermarks without an allocation registry.
+- Keep advanced diagnostics disabled by default with no allocation-path instrumentation in the default build and fixed atomic state when enabled.
 - Add host contracts and ESP32 example builds across ESP32, ESP32-S3, ESP32-C3, and ESP32-P4 targets.
 - Add ZekStack-standard repository documentation, tooling, test layout, metadata validation, and release workflow structure.
+- Complete the `v0.1.0` implementation roadmap and harden tag-driven GitHub release creation with validated, non-empty changelog notes.

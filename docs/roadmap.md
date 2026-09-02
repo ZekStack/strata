@@ -1,14 +1,15 @@
 # Roadmap
 
-This document tracks remaining Strata library work. The foundational implementation phases are complete; completed functionality belongs in `CHANGELOG.md`, while ecosystem migration work is tracked separately in `ecosystem-adoption.md`.
+The Strata `v0.1.0` implementation roadmap is complete.
 
-The Phase 12 API, placement/fallback semantics, platform boundaries, and failure contracts are the stable base for ZekStack ecosystem adoption. Future additions should preserve those contracts unless a deliberate breaking release changes them.
+All foundational phases through Phase 12 and the final Advanced diagnostics phase are implemented. Completed functionality is recorded in `CHANGELOG.md`; this file no longer carries completed phase checklists.
 
-## Advanced diagnostics
+The Phase 12 API/placement/failure contracts remain the stable base for ecosystem migration, and Advanced diagnostics was added as an opt-in additive layer without weakening those contracts.
 
-- [ ] Evaluate optional allocation tags/categories.
-- [ ] Evaluate opt-in allocation, failure, and fallback counters.
-- [ ] Track preferred-external fallback counts when diagnostics are enabled.
-- [ ] Evaluate peak allocated bytes per region.
-- [ ] Avoid mandatory global allocation registries, locks, or runtime overhead.
-- [ ] Ensure diagnostics cannot recurse into the allocator they observe.
+## After v0.1.0
+
+No additional Strata implementation phase is currently committed to this roadmap.
+
+- ZekStack/Core adoption work is tracked in `ecosystem-adoption.md`.
+- New standalone Strata features should be added here only when they have an agreed release target and scope.
+- Any future breaking API or semantic change requires a deliberate versioned release rather than silently changing the `v0.1.0` contracts.

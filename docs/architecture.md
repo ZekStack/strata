@@ -37,13 +37,67 @@ standard allocator / platform allocator / optional FreeRTOS integration
 
 A requested placement must never be confused with the actual region. For example, `PreferExternal` may legally produce `Region::Internal` after fallback, while `RequireExternal` may not.
 
+## Raw allocation contract
+
+Phase 2 provides the non-owning raw allocation layer used by later RAII, allocator, buffer, and integration APIs.
+
+### AllocationRequest
+
+`AllocationRequest` carries three constraints:
+
+- `sizeBytes` — requested byte count;
+- `placement` — requested placement policy;
+- `alignment` — requested power-of-two alignment, defaulting to `alignof(std::max_align_t)`.
+
+The request is deliberately extensible so later capability constraints can be added without replacing the placement vocabulary.
+
+### Failure and zero-size behavior
+
+The ordinary raw allocation API is `noexcept` and reports failure with `nullptr`.
+
+- `allocate(0, ...)` returns `nullptr`.
+- `calloc(0, size, ...)` and `calloc(count, 0, ...)` return `nullptr`.
+- `calloc` rejects `count * size` overflow before entering a platform backend.
+- alignment must be a non-zero power of two; invalid or platform-unsupported alignment returns `nullptr`.
+- `free(nullptr)` is a no-op.
+
+This avoids platform-dependent zero-size sentinel allocations and gives embedded callers one deterministic contract.
+
+### Reallocation and migration
+
+`reallocate(ptr, newSize, placement)` may move an allocation in order to satisfy the new placement request.
+
+- `reallocate(nullptr, size, placement)` is equivalent to a new default-aligned allocation.
+- `reallocate(ptr, 0, placement)` frees `ptr` and returns `nullptr`.
+- `Internal` may migrate an ESP32 allocation into internal memory.
+- `PreferExternal` first attempts migration/resizing in external memory and retries internally if the external request fails.
+- `RequireExternal` attempts only external memory and never degrades.
+- on failure, the original allocation remains valid and owned by the caller.
+
+Phase 2 `reallocate` is defined for default-aligned allocations produced by `allocate(size, placement)`, `calloc`, or `reallocate`. Over-aligned allocations produced through `AllocationRequest` must be released with `Strata::free` and are not accepted by `reallocate` yet. This avoids pretending that portable `realloc` APIs preserve arbitrary alignment metadata.
+
 ## Platform boundary
 
-The Phase 1 backend boundary distinguishes generic C++ from ESP32 builds without exposing ESP-specific terminology publicly.
+### Generic backend
 
-The generic backend is the portable baseline. In future phases it will use standard allocation primitives and treat the normal process heap as the internal/default-local region. A required external allocation is unsupported when the platform has no external-memory backend.
+The generic backend is the portable baseline.
 
-The ESP32 backend will map Strata's concepts to ESP-IDF heap capability APIs. PSRAM is therefore an ESP32 backend implementation detail, not a public Strata concept.
+- `Default` and `Internal` use standard C/C++ allocation primitives.
+- `PreferExternal` falls back directly to the same internal/default-local heap because no external provider exists.
+- `RequireExternal` fails with `nullptr` without modifying an existing allocation.
+- over-aligned allocation uses the standard aligned allocation primitive and remains compatible with `Strata::free`.
+
+### ESP32 backend
+
+The ESP32 backend maps placement to ESP-IDF heap capabilities:
+
+- `Default` → 8-bit capable normal heap behavior;
+- `Internal` → internal + 8-bit capable memory;
+- external placement → external RAM + 8-bit capable memory.
+
+`PreferExternal` performs two explicit attempts: external first, then internal. `RequireExternal` performs only the external attempt. No PSRAM-specific term leaks into the public Strata API.
+
+Reallocation uses ESP-IDF's capability-aware realloc behavior, which can move an existing allocation when the requested capabilities change.
 
 ## FreeRTOS boundary
 
@@ -53,15 +107,16 @@ Worker remains responsible for jobs, concurrency, cancellation, lifecycle, clean
 
 ## Safety rules
 
-Future allocation phases must preserve these rules:
+Allocation and later integration phases must preserve these rules:
 
 1. Required constraints never silently degrade.
 2. External memory is never assumed safe for DMA, ISR, flash/cache-disabled, or other platform-sensitive contexts.
 3. Platform-specific capabilities stay behind explicit Strata abstractions.
 4. Strata has no required global initialization and no hidden mutable global default placement.
-5. Failure behavior must be deterministic and suitable for embedded builds without requiring exceptions in ordinary APIs.
+5. Failure behavior is deterministic and suitable for embedded builds without requiring exceptions in ordinary APIs.
 6. Diagnostics distinguish requested placement from actual memory region.
+7. Failed reallocation never consumes or invalidates the caller's original allocation.
 
-## Phase 1 boundary
+## Current boundary
 
-Phase 1 intentionally contains no allocation API. It freezes the terminology and platform split first so Phase 2 can implement allocation against a stable contract.
+Phase 2 ends at raw allocation mechanics. Region introspection, heap diagnostics, typed construction/destruction, STL allocators, owned buffers, capability constraints, and FreeRTOS integration remain later independent phases.

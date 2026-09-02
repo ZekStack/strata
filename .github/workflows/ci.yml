@@ -32,18 +32,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Compile host contract test
+      - name: Compile and run placement contract
         run: |
           mkdir -p build
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
             -Isrc \
             test/host/placement_contract_test.cpp \
+            src/strata/Allocation.cpp \
             src/strata/internal/PlatformGeneric.cpp \
             src/strata/internal/PlatformEsp32.cpp \
             -o build/placement-contract-test
+          ./build/placement-contract-test
 
-      - name: Run host contract test
-        run: ./build/placement-contract-test
+      - name: Compile and run generic allocation contract
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            -Isrc \
+            test/host/allocation_contract_test.cpp \
+            src/strata/Allocation.cpp \
+            src/strata/internal/PlatformGeneric.cpp \
+            src/strata/internal/PlatformEsp32.cpp \
+            -o build/allocation-contract-test
+          ./build/allocation-contract-test
+
+      - name: Compile and run ESP32 backend contract
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            -DESP32 \
+            -Itest/host/fakes \
+            -Isrc \
+            test/host/esp32_allocation_backend_test.cpp \
+            src/strata/Allocation.cpp \
+            src/strata/internal/PlatformEsp32.cpp \
+            -o build/esp32-allocation-backend-test
+          ./build/esp32-allocation-backend-test
 
   build-example:
     runs-on: ubuntu-latest
@@ -80,6 +102,15 @@ jobs:
       - name: Build Placement example
         run: |
           pio ci examples/Placement \
+            --board ${{ matrix.board }} \
+            --lib="." \
+            --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \
+            --project-option "build_unflags=-std=gnu++11" \
+            --project-option "build_flags=-std=gnu++20"
+
+      - name: Build Allocation example
+        run: |
+          pio ci examples/Allocation \
             --board ${{ matrix.board }} \
             --lib="." \
             --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \

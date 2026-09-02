@@ -13,6 +13,7 @@ Strata ships focused Arduino sketches under `examples/`.
 | `Buffer` | Move-only owned byte storage and resize behavior. |
 | `Capabilities` | Required DMA/executable constraints. |
 | `FreeRTOSTask` | Optional FreeRTOS stack placement and task diagnostics. |
+| `FreeRTOSQueue` | Optional typed FreeRTOS queue storage placement and task-only queue use. |
 
 Start with `examples/Basic`. Move to the specialized example that matches the API you need rather than combining all Strata features into one sketch.
 

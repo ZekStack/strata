@@ -34,6 +34,16 @@ The optional task integration requires FreeRTOS static allocation support. Ensur
 
 External memory remains subject to cache-disabled restrictions. Tasks that can run during flash/cache-disabled windows should use `Placement::Internal` for their stack.
 
+## FreeRTOS queue creation fails with ISR access
+
+`QueueUsage::IsrAccessible` currently requires `Placement::Internal` item storage. Strata deliberately rejects default or external placement for ISR-facing queues because external/cache-backed queue memory has not been proven safe across supported targets.
+
+Use `QueueUsage::TaskOnly` when the queue is only accessed from task context and external storage is desired. Do not bypass this restriction by taking the raw `QueueHandle_t` and calling ISR APIs on an externally backed queue.
+
+## `RequireExternal` FreeRTOS queue creation fails
+
+For task-only queues, `RequireExternal` applies to the item backing storage. The `StaticQueue_t` control block is still always internal. Queue creation fails if the external item-storage allocation cannot be satisfied.
+
 ## CI metadata validation fails
 
 Keep these versions synchronized:

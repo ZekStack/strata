@@ -16,7 +16,7 @@ It gives applications and libraries one vocabulary for allocation intent while p
 - **Typed ownership** — raw allocation, typed construction, unique ownership, shared ownership, and move-only buffers use the same placement model.
 - **STL integration** — placement-aware allocators and container helpers preserve allocation intent.
 - **Runtime diagnostics** — inspect actual memory regions and platform heap statistics.
-- **Optional FreeRTOS task memory** — explicitly place task stacks while keeping FreeRTOS out of the core headers.
+- **Optional FreeRTOS memory primitives** — explicitly place task stacks and queue item storage while keeping FreeRTOS out of the core headers.
 - **Standalone core** — Strata does not depend on other ZekStack libraries.
 
 ## Install
@@ -90,8 +90,9 @@ values.push_back(42);
 - Raw allocation, typed ownership, and `Buffer` report allocation failure without requiring exceptions.
 - `Strata::Allocator<T>` follows standard allocator expectations and throws `std::bad_alloc` when exceptions are enabled.
 - External RAM is not automatically safe for DMA, ISR use, or cache-disabled flash windows.
-- FreeRTOS integration is opt-in through `<strata/freertos/Task.h>` and requires static allocation support.
+- FreeRTOS task and queue integrations are opt-in and require static allocation support.
 - Tasks that can execute while flash/cache is disabled should keep their stacks in internal memory.
+- ISR-accessible Strata queues require internal item storage; external queue storage is task-only.
 
 ## Examples
 
@@ -106,6 +107,7 @@ values.push_back(42);
 | `Buffer` | Move-only owned byte buffers and resize behavior. |
 | `Capabilities` | DMA/executable capability requirements. |
 | `FreeRTOSTask` | Optional placed FreeRTOS task stacks and diagnostics. |
+| `FreeRTOSQueue` | Optional typed FreeRTOS queues with placed item storage. |
 
 Start with:
 
@@ -129,6 +131,7 @@ examples/Basic
 | [`docs/buffer.md`](docs/buffer.md) | Owned byte buffers and resize semantics. |
 | [`docs/capabilities.md`](docs/capabilities.md) | Required DMA/executable constraints and safety boundaries. |
 | [`docs/freertos-tasks.md`](docs/freertos-tasks.md) | Optional task-stack placement and static task creation. |
+| [`docs/freertos-queues.md`](docs/freertos-queues.md) | Optional typed queue storage placement and ISR safety. |
 | [`docs/roadmap.md`](docs/roadmap.md) | Remaining Strata implementation roadmap. |
 | [`docs/ecosystem-adoption.md`](docs/ecosystem-adoption.md) | Planned adoption across ZekStack and Core. |
 
@@ -152,10 +155,11 @@ Strata::free(raw);
 Strata::free(dma);
 ```
 
-Optional FreeRTOS integration:
+Optional FreeRTOS integrations:
 
 ```cpp
 #include <strata/freertos/Task.h>
+#include <strata/freertos/Queue.h>
 
 Strata::FreeRTOS::Task task = Strata::FreeRTOS::Task::create(worker, nullptr, {
     .name = "worker",
@@ -163,6 +167,12 @@ Strata::FreeRTOS::Task task = Strata::FreeRTOS::Task::create(worker, nullptr, {
     .stackPlacement = Strata::Placement::PreferExternal,
     .priority = 1,
     .affinity = Strata::FreeRTOS::NoAffinity,
+});
+
+auto queue = Strata::FreeRTOS::Queue<Event>::create({
+    .length = 16,
+    .storagePlacement = Strata::Placement::PreferExternal,
+    .usage = Strata::FreeRTOS::QueueUsage::TaskOnly,
 });
 ```
 
@@ -175,9 +185,9 @@ Strata::FreeRTOS::Task task = Strata::FreeRTOS::Task::create(worker, nullptr, {
 | ESP32 backend | Arduino ESP32 / ESP-IDF-compatible build environment |
 | External memory | ESP32 PSRAM through ESP-IDF heap capabilities |
 | Core dependencies | none |
-| Optional task integration | FreeRTOS with static allocation enabled |
+| Optional FreeRTOS integration | FreeRTOS with static allocation enabled |
 | Exceptions | Not required by core APIs; STL allocator follows standard semantics |
-| Status | Early-stage `0.1.0`; Phase 8 task-memory primitives available |
+| Status | Early-stage `0.1.0`; Phase 9 queue-memory primitives available |
 
 ## License
 

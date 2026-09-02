@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     branches: ['**']
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: strata-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   PIOARDUINO_PLATFORM_URL: https://github.com/pioarduino/platform-espressif32/releases/download/55.03.39/platform-espressif32.zip
@@ -12,11 +17,24 @@ env:
   PIOARDUINO_VERSION: 6.1.19
 
 jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release metadata
+        run: python3 scripts/validate_release_version.py
+
   source-audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Audit ZekStack dependency boundary
+        run: |
+          if grep -RInE '#include[[:space:]]+[<"](Accord|Curier|Flow|Fresh|Link|Lingo|Phase|Pulse|Seal|Signal|Tempo|Trace|Worker)\.h[>"]' src; then
+            echo "Strata must not depend on another ZekStack library"
+            exit 1
+          fi
 
       - name: Audit production sources
         run: |
@@ -33,100 +51,83 @@ jobs:
           count="$(grep -c 'throw std::bad_alloc' src/strata/Allocator.h)"
           test "$count" -eq 1
 
-  host-contract:
+  host-tests:
     runs-on: ubuntu-latest
     needs: source-audit
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Compile and run placement contract
+      - uses: actions/checkout@v4
+      - name: Build and run host contracts
         run: |
+          set -e
           mkdir -p build
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc test/host/placement_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/placement-contract-test
+          common_sources="src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp"
+          common_flags="-std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc"
+
+          g++ $common_flags tests/host/placement_contract_test.cpp $common_sources -o build/placement-contract-test
           ./build/placement-contract-test
 
-      - name: Compile and run generic allocation contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc test/host/allocation_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/allocation-contract-test
+          g++ $common_flags tests/host/allocation_contract_test.cpp $common_sources -o build/allocation-contract-test
           ./build/allocation-contract-test
 
-      - name: Compile and run generic diagnostics contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc test/host/diagnostics_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/diagnostics-contract-test
+          g++ $common_flags tests/host/diagnostics_contract_test.cpp $common_sources -o build/diagnostics-contract-test
           ./build/diagnostics-contract-test
 
-      - name: Compile and run typed ownership contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc test/host/typed_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/typed-contract-test
+          g++ $common_flags tests/host/typed_contract_test.cpp $common_sources -o build/typed-contract-test
           ./build/typed-contract-test
 
-      - name: Compile and run STL allocator contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc test/host/stl_allocator_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/stl-allocator-contract-test
+          g++ $common_flags tests/host/stl_allocator_contract_test.cpp $common_sources -o build/stl-allocator-contract-test
           ./build/stl-allocator-contract-test
 
-      - name: Compile and run no-exceptions allocator contract
-        run: |
-          g++ -std=c++20 -fno-exceptions -Wall -Wextra -Wpedantic -Werror -Isrc test/host/stl_allocator_no_exceptions_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/stl-allocator-no-exceptions-contract-test
+          g++ $common_flags -fno-exceptions tests/host/stl_allocator_no_exceptions_contract_test.cpp $common_sources -o build/stl-allocator-no-exceptions-contract-test
           ./build/stl-allocator-no-exceptions-contract-test
 
-      - name: Compile and run buffer contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc test/host/buffer_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/buffer-contract-test
+          g++ $common_flags tests/host/buffer_contract_test.cpp $common_sources -o build/buffer-contract-test
           ./build/buffer-contract-test
 
-      - name: Compile and run capability contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc test/host/capability_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/capability-contract-test
+          g++ $common_flags tests/host/capability_contract_test.cpp $common_sources -o build/capability-contract-test
           ./build/capability-contract-test
 
-      - name: Compile and run generic FreeRTOS task contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Itest/host/freertos_fakes -Isrc test/host/freertos_task_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/freertos-task-contract-test
+          g++ $common_flags -Itests/host/freertos_fakes tests/host/freertos_task_contract_test.cpp $common_sources -o build/freertos-task-contract-test
           ./build/freertos-task-contract-test
 
-      - name: Compile and run ESP32 allocation backend contract
+      - name: Build and run ESP32 backend contracts
         run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itest/host/fakes -Isrc test/host/esp32_allocation_backend_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp -o build/esp32-allocation-backend-test
+          set -e
+          mkdir -p build
+          flags="-std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itests/host/fakes -Isrc"
+          sources="src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp"
+
+          g++ $flags tests/host/esp32_allocation_backend_test.cpp $sources -o build/esp32-allocation-backend-test
           ./build/esp32-allocation-backend-test
 
-      - name: Compile and run ESP32 diagnostics backend contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itest/host/fakes -Isrc test/host/esp32_diagnostics_backend_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp -o build/esp32-diagnostics-backend-test
+          g++ $flags tests/host/esp32_diagnostics_backend_test.cpp $sources -o build/esp32-diagnostics-backend-test
           ./build/esp32-diagnostics-backend-test
 
-      - name: Compile and run ESP32 buffer backend contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itest/host/fakes -Isrc test/host/esp32_buffer_backend_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp -o build/esp32-buffer-backend-test
+          g++ $flags tests/host/esp32_buffer_backend_test.cpp $sources -o build/esp32-buffer-backend-test
           ./build/esp32-buffer-backend-test
 
-      - name: Compile and run ESP32 capability backend contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itest/host/fakes -Isrc test/host/esp32_capability_backend_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp -o build/esp32-capability-backend-test
+          g++ $flags tests/host/esp32_capability_backend_test.cpp $sources -o build/esp32-capability-backend-test
           ./build/esp32-capability-backend-test
 
-      - name: Compile and run ESP32 FreeRTOS task backend contract
-        run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itest/host/freertos_fakes -Itest/host/fakes -Isrc test/host/esp32_freertos_task_backend_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp -o build/esp32-freertos-task-backend-test
+          g++ $flags -Itests/host/freertos_fakes tests/host/esp32_freertos_task_backend_test.cpp $sources -o build/esp32-freertos-task-backend-test
           ./build/esp32-freertos-task-backend-test
 
-  build-example:
+  build-examples:
     runs-on: ubuntu-latest
-    needs: source-audit
+    needs: [source-audit, host-tests]
     strategy:
       fail-fast: false
       matrix:
-        board: [esp32dev, esp32-s3-devkitc-1, esp32-c3-devkitm-1, esp32-p4-evboard]
+        board:
+          - esp32dev
+          - esp32-s3-devkitc-1
+          - esp32-c3-devkitm-1
+          - esp32-p4-evboard
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-
       - name: Cache PIOArduino
         uses: actions/cache@v4
         with:
@@ -136,33 +137,40 @@ jobs:
           key: ${{ runner.os }}-pioarduino-${{ env.PIOARDUINO_VERSION }}-${{ env.PIOARDUINO_PLATFORM_VERSION }}-${{ hashFiles('**/library.json') }}
           restore-keys: |
             ${{ runner.os }}-pioarduino-${{ env.PIOARDUINO_VERSION }}-${{ env.PIOARDUINO_PLATFORM_VERSION }}-
+      - name: Install PIOArduino
+        run: |
+          python -m pip install --upgrade "pioarduino==${PIOARDUINO_VERSION}"
+          pio pkg install -g -p "${PIOARDUINO_PLATFORM_URL}"
+      - name: Build examples
+        run: |
+          set -e
+          for sketch in examples/*; do
+            pio ci "$sketch" \
+              --board "${{ matrix.board }}" \
+              --lib="." \
+              --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \
+              --project-option "build_unflags=-std=gnu++11" \
+              --project-option "build_flags=-std=gnu++20"
+          done
 
-      - name: Install PIOArduino Core
-        run: python -m pip install --upgrade "pioarduino==${PIOARDUINO_VERSION}"
-
-      - name: Install PIOArduino ESP32 Platform
-        run: pio pkg install -g -p "${PIOARDUINO_PLATFORM_URL}"
-
-      - name: Build Placement example
-        run: pio ci examples/Placement --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
-
-      - name: Build Allocation example
-        run: pio ci examples/Allocation --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
-
-      - name: Build Diagnostics example
-        run: pio ci examples/Diagnostics --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
-
-      - name: Build TypedOwnership example
-        run: pio ci examples/TypedOwnership --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
-
-      - name: Build STL example
-        run: pio ci examples/STL --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
-
-      - name: Build Buffer example
-        run: pio ci examples/Buffer --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
-
-      - name: Build Capabilities example
-        run: pio ci examples/Capabilities --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
-
-      - name: Build FreeRTOSTask example
-        run: pio ci examples/FreeRTOSTask --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [metadata, source-audit, host-tests, build-examples]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v version="$VERSION" '
+            $0 == "## " version {capture=1; next}
+            capture && /^## / {exit}
+            capture {print}
+          ' CHANGELOG.md > /tmp/release-notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file /tmp/release-notes.md

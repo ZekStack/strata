@@ -6,7 +6,7 @@ Strata is a lightweight, standalone C++ memory placement and allocation utility 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!NOTE]
-> Strata is in its foundation phase. The placement contract and platform boundary are available now; allocation APIs begin in Phase 2.
+> Strata is under active development. Phase 2 provides the raw allocation engine; typed ownership, diagnostics, STL allocators, and optional FreeRTOS integration are planned in later phases.
 
 ## Design goals
 
@@ -15,16 +15,55 @@ Strata is a lightweight, standalone C++ memory placement and allocation utility 
 - **Explicit fallback semantics** — callers can distinguish preference from requirement.
 - **Platform-owned mechanics** — ESP-IDF, FreeRTOS, and other platform details stay behind Strata boundaries.
 - **Infrastructure, not orchestration** — Strata may provide low-level FreeRTOS memory helpers later, but Worker remains the high-level job/task framework.
-- **Observable behavior** — later phases will report requested placement, actual region, and memory diagnostics.
+- **Deterministic failure** — ordinary allocation APIs return `nullptr`; they do not require exceptions or abort-on-failure behavior.
 
-## Public terminology
+## Quick start
 
 ```cpp
 #include <Strata.h>
 
-Strata::Placement placement = Strata::Placement::PreferExternal;
-Strata::Region region = Strata::Region::Unknown;
+void *fast = Strata::allocate(256, Strata::Placement::Internal);
+void *bulk = Strata::allocate(4096, Strata::Placement::PreferExternal);
+
+Strata::free(fast);
+Strata::free(bulk);
 ```
+
+For explicit alignment, use `AllocationRequest`:
+
+```cpp
+Strata::AllocationRequest request{
+    .sizeBytes = 1024,
+    .placement = Strata::Placement::PreferExternal,
+    .alignment = 64,
+};
+
+void *aligned = Strata::allocate(request);
+Strata::free(aligned);
+```
+
+## Raw allocation API
+
+```cpp
+void *Strata::allocate(std::size_t sizeBytes, Placement placement = Placement::Default) noexcept;
+void *Strata::allocate(const AllocationRequest &request) noexcept;
+void *Strata::calloc(std::size_t count, std::size_t sizeBytes, Placement placement = Placement::Default) noexcept;
+void *Strata::reallocate(void *ptr, std::size_t newSizeBytes, Placement placement = Placement::Default) noexcept;
+void Strata::free(void *ptr) noexcept;
+```
+
+The Phase 2 behavior is intentionally deterministic:
+
+- zero-byte `allocate` and zero-count/zero-element-size `calloc` return `nullptr`;
+- `calloc` rejects size multiplication overflow;
+- alignment must be a non-zero power of two; unsupported alignments fail with `nullptr`;
+- `reallocate(nullptr, size, placement)` behaves like `allocate(size, placement)`;
+- `reallocate(ptr, 0, placement)` frees `ptr` and returns `nullptr`;
+- failed `reallocate` leaves the original allocation valid;
+- `free(nullptr)` is a no-op;
+- over-aligned allocations from `AllocationRequest` must currently be released with `Strata::free`; passing them to `Strata::reallocate` is not supported in Phase 2 because portable reallocators do not preserve arbitrary alignment metadata.
+
+## Public terminology
 
 ### Placement
 
@@ -33,7 +72,7 @@ Strata::Region region = Strata::Region::Unknown;
 | `Default` | Use the platform's normal allocator and behavior. |
 | `Internal` | Memory must come from the platform's internal/default-local memory region. |
 | `PreferExternal` | Prefer external memory and fall back to internal memory if allowed by the platform. |
-| `RequireExternal` | External memory is mandatory; the operation must fail when it cannot be satisfied. |
+| `RequireExternal` | External memory is mandatory; the operation fails when it cannot be satisfied. |
 
 ### Region
 
@@ -43,16 +82,14 @@ Strata::Region region = Strata::Region::Unknown;
 - `Internal`
 - `External`
 
-Placement is a request. Region is an observed result. Keeping those concepts separate is a core Strata rule.
+Placement is a request. Region is an observed result. Region introspection arrives in Phase 3.
 
 ## Platform model
 
-Phase 1 establishes two backend families:
+- **Generic** — `Default`, `Internal`, and `PreferExternal` use the standard process heap. Because the generic backend has no external-memory provider, `RequireExternal` returns `nullptr`.
+- **ESP32** — `Default` maps to the normal 8-bit capable heap, `Internal` requires internal 8-bit capable memory, and external placement maps to ESP-IDF's external-memory heap capability. `PreferExternal` retries against internal memory only after the external attempt fails.
 
-- **Generic** — portable C++ fallback for platforms without an external-memory concept.
-- **ESP32** — ESP32 backend selected when the `ESP32` build macro is present. Later phases will map external memory to ESP32 PSRAM through ESP-IDF capability APIs.
-
-No ESP32-specific memory term is part of the generic public API.
+ESP32 external memory remains subject to the platform's cache, flash-operation, DMA, ISR, and task-stack restrictions. Strata does not make external memory safe for contexts where the platform itself forbids it.
 
 ## Install
 
@@ -78,7 +115,7 @@ Arduino/libraries/Strata
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md) — architectural boundaries and terminology.
+- [`docs/architecture.md`](docs/architecture.md) — architectural boundaries, allocation semantics, and platform mapping.
 - [`docs/TODO.md`](docs/TODO.md) — complete phased implementation and migration roadmap.
 
 ## Compatibility
@@ -88,10 +125,10 @@ Arduino/libraries/Strata
 | Language | C++20 |
 | Core API | Standard C++ |
 | ESP32 backend | Arduino ESP32 / ESP-IDF-compatible build environment |
-| External memory | Platform dependent; ESP32 PSRAM support begins in Phase 2 |
+| External memory | ESP32 external RAM through ESP-IDF heap capabilities |
 | Dependencies | none |
-| Exceptions | not required by Phase 1 production code |
-| Status | Early-stage `0.1.0` foundation |
+| Exceptions | not required by production allocation APIs |
+| Status | Early-stage `0.1.0`; raw allocation engine available |
 
 ## ZekStack adoption
 

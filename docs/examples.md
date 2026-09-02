@@ -14,7 +14,8 @@ Strata ships focused Arduino sketches under `examples/`.
 | `Capabilities` | Required DMA/executable constraints. |
 | `FreeRTOSTask` | Optional FreeRTOS stack placement and task diagnostics. |
 | `FreeRTOSQueue` | Optional typed FreeRTOS queue storage placement and task-only queue use. |
+| `ArduinoJson` | Optional ArduinoJson 7 document allocation through Strata placement. |
 
 Start with `examples/Basic`. Move to the specialized example that matches the API you need rather than combining all Strata features into one sketch.
 
-The CI matrix builds every example for ESP32, ESP32-S3, ESP32-C3, and ESP32-P4 targets.
+The CI matrix builds every example for ESP32, ESP32-S3, ESP32-C3, and ESP32-P4 targets. ArduinoJson 7.4.3 is supplied only to the example build environment so it remains an optional Strata integration.

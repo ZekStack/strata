@@ -44,6 +44,18 @@ Use `QueueUsage::TaskOnly` when the queue is only accessed from task context and
 
 For task-only queues, `RequireExternal` applies to the item backing storage. The `StaticQueue_t` control block is still always internal. Queue creation fails if the external item-storage allocation cannot be satisfied.
 
+## ArduinoJson integration header fails to compile
+
+`<strata/arduinojson/Allocator.h>` is optional and requires ArduinoJson major version 7. Install ArduinoJson separately and include `<ArduinoJson.h>` in the translation unit using the adapter.
+
+Strata does not add ArduinoJson to `library.json` or `library.properties`, so projects that use the adapter must declare their own ArduinoJson dependency.
+
+## ArduinoJson document reports `overflowed()`
+
+An ArduinoJson allocation or reallocation could not be satisfied. With `Placement::RequireExternal`, this can indicate unavailable or exhausted PSRAM. With `Placement::PreferExternal`, both the external attempt and internal fallback may have failed.
+
+The `Strata::ArduinoJson::Allocator` must also outlive the `JsonDocument`; ArduinoJson stores a pointer to the allocator rather than owning it.
+
 ## CI metadata validation fails
 
 Keep these versions synchronized:

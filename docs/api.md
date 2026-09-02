@@ -6,11 +6,12 @@ The primary core include is:
 #include <Strata.h>
 ```
 
-Optional FreeRTOS integrations are intentionally separate:
+Optional integrations are intentionally separate:
 
 ```cpp
 #include <strata/freertos/Task.h>
 #include <strata/freertos/Queue.h>
+#include <strata/arduinojson/Allocator.h>
 ```
 
 ## Placement and regions
@@ -67,5 +68,18 @@ This API is intentionally low-level. Worker remains the ZekStack orchestration l
 `QueueUsage::IsrAccessible` requires internal item storage. `sendFromISR()` and `receiveFromISR()` reject task-only queues, and ISR-capable queues configured with external/default storage fail during creation. The underlying `QueueHandle_t` remains available through `handle()` for infrastructure users.
 
 See `freertos-queues.md` for lifecycle and ISR safety details.
+
+## ArduinoJson
+
+`Strata::ArduinoJson::Allocator` implements the ArduinoJson 7 custom allocator interface and forwards allocation, reallocation, and deallocation through a single Strata `Placement` policy.
+
+```cpp
+Strata::ArduinoJson::Allocator allocator{Strata::Placement::PreferExternal};
+ArduinoJson::JsonDocument document{&allocator};
+```
+
+The allocator must outlive the `JsonDocument`. The integration is opt-in, is not included by `Strata.h`, and requires ArduinoJson major version 7 to be available to the translation unit.
+
+See `arduinojson.md` for placement, failure, lifetime, and PSRAM details.
 
 See the specialized documents for exact semantics and safety boundaries.

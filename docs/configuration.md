@@ -44,14 +44,14 @@ Raw allocation, typed ownership, and `Buffer` do not require exceptions for ordi
 
 ## FreeRTOS integration
 
-FreeRTOS support is opt-in through `<strata/freertos/Task.h>` and requires static allocation support.
+FreeRTOS support is opt-in through `<strata/freertos/Task.h>` and `<strata/freertos/Queue.h>` and requires static allocation support.
 
-`TaskConfig` configures:
+`TaskConfig` configures task name, stack bytes, stack placement, priority, and affinity. Use internal stack placement for tasks that may execute while flash/cache is disabled.
 
-- task name;
-- stack bytes;
-- stack placement;
-- priority;
-- affinity.
+Task-only queue item storage may use external memory. ISR-accessible queues require internal item storage.
 
-Use internal stack placement for tasks that may execute while flash/cache is disabled. External stacks are subject to the target's FreeRTOS/ESP-IDF and cache-safety constraints.
+## ArduinoJson integration
+
+ArduinoJson support is opt-in through `<strata/arduinojson/Allocator.h>`. The header requires ArduinoJson major version 7 to be available but ArduinoJson is not listed as a core Strata dependency.
+
+The CI compatibility target and example builds use ArduinoJson 7.4.3. Applications should include `<ArduinoJson.h>` and keep the `Strata::ArduinoJson::Allocator` object alive for at least as long as every `ArduinoJson::JsonDocument` that references it.

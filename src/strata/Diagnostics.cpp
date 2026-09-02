@@ -108,7 +108,7 @@ Region regionOf(const void *ptr) noexcept {
 }
 
 bool supports(Placement placement) noexcept {
-	return Internal::supports(placement);
+	return validPlacement(placement) && Internal::supports(placement);
 }
 
 bool supports(Region region) noexcept {
@@ -133,6 +133,9 @@ AllocationDiagnostics allocationDiagnostics() noexcept {
 
 AllocationDiagnostics allocationDiagnostics(Placement placement) noexcept {
 #if STRATA_ENABLE_ADVANCED_DIAGNOSTICS
+	if (!validPlacement(placement)) {
+		return {};
+	}
 	return snapshot(diagnosticsState.placements[placementIndex(placement)]);
 #else
 	(void)placement;
@@ -154,7 +157,9 @@ namespace Internal {
 
 void recordAllocationAttempt(std::size_t sizeBytes, Placement placement) noexcept {
 	recordAttempt(diagnosticsState.total, sizeBytes);
-	recordAttempt(diagnosticsState.placements[placementIndex(placement)], sizeBytes);
+	if (validPlacement(placement)) {
+		recordAttempt(diagnosticsState.placements[placementIndex(placement)], sizeBytes);
+	}
 }
 
 void recordAllocationResult(
@@ -172,12 +177,14 @@ void recordAllocationResult(
 		success,
 		invalidRequest,
 		preferredExternalFallback);
-	recordResult(
-		diagnosticsState.placements[placementIndex(placement)],
-		sizeBytes,
-		success,
-		invalidRequest,
-		preferredExternalFallback);
+	if (validPlacement(placement)) {
+		recordResult(
+			diagnosticsState.placements[placementIndex(placement)],
+			sizeBytes,
+			success,
+			invalidRequest,
+			preferredExternalFallback);
+	}
 }
 
 } // namespace Internal

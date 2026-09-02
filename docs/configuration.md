@@ -22,6 +22,8 @@ The core library selects its backend at compile time:
 
 No caller-side backend object is required.
 
+The `v0.1.0` generic backend is validated with GCC/Clang-compatible C++20 toolchains. MSVC is intentionally rejected because its CRT does not provide the `std::aligned_alloc`/`std::free` pairing used by the generic over-aligned allocation contract. Native MSVC support requires a backend with matching aligned-allocation provenance and is outside the `v0.1.0` compatibility contract.
+
 ## External memory
 
 ESP32 external placement requires PSRAM to be available in the active board configuration.
@@ -46,7 +48,7 @@ Region support queries and `memoryStats()` remain available regardless of this f
 
 ## Alignment and capabilities
 
-`AllocationRequest` combines size, placement, alignment, and required capabilities. Invalid alignment or unsatisfied required capabilities cause allocation failure.
+`AllocationRequest` combines size, placement, alignment, and required capabilities. Invalid placement values, invalid alignment, or unsatisfied required capabilities cause allocation failure.
 
 Capability constraints are requirements, not preferences. Placement fallback never removes them.
 
@@ -70,7 +72,11 @@ Keep the `MemoryResource` object alive for at least as long as every PMR contain
 
 FreeRTOS support is opt-in through `<strata/freertos/Task.h>` and `<strata/freertos/Queue.h>` and requires static allocation support.
 
+The task integration additionally requires `INCLUDE_vTaskDelete == 1` and `INCLUDE_uxTaskGetStackHighWaterMark == 1`. `Task.h` checks these settings at compile time so a FreeRTOS configuration that cannot satisfy the public task API fails with an actionable error instead of failing later on missing symbols.
+
 `TaskConfig` configures task name, stack bytes, stack placement, priority, and affinity. Use internal stack placement for tasks that may execute while flash/cache is disabled.
+
+A `Strata::FreeRTOS::Task` must be reset or destroyed from a different task context than the task it owns. Self-deletion cannot return through the owner cleanup path to release the caller-owned static stack and control block safely. Tasks owned by this wrapper must also not independently call `vTaskDelete(nullptr)`.
 
 Task-only queue item storage may use external memory. ISR-accessible queues require internal item storage.
 

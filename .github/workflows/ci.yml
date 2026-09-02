@@ -166,8 +166,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Cache PIOArduino
-        uses: actions/cache@v4
+      - name: Restore PIOArduino cache
+        id: pioarduino-cache
+        continue-on-error: true
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.platformio
@@ -200,6 +202,15 @@ jobs:
             --project-option "lib_deps=bblanchon/ArduinoJson@7.4.3" \
             --project-option "build_unflags=-std=gnu++11" \
             --project-option "build_flags=-std=gnu++20 -DSTRATA_ENABLE_ADVANCED_DIAGNOSTICS=1"
+      - name: Save PIOArduino cache
+        if: matrix.board == 'esp32dev' && steps.pioarduino-cache.outcome == 'success' && steps.pioarduino-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: ${{ steps.pioarduino-cache.outputs.cache-primary-key }}
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

@@ -17,6 +17,18 @@ enum class Region : std::uint8_t {
     External,
 };
 
+[[nodiscard]] constexpr bool validPlacement(Placement placement) noexcept {
+    switch (placement) {
+        case Placement::Default:
+        case Placement::Internal:
+        case Placement::PreferExternal:
+        case Placement::RequireExternal:
+            return true;
+    }
+
+    return false;
+}
+
 [[nodiscard]] constexpr const char *toString(Placement placement) noexcept {
     switch (placement) {
         case Placement::Default:

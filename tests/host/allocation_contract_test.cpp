@@ -25,6 +25,12 @@ int main() {
                .alignment = 3,
            }) == nullptr);
 
+    const auto invalidPlacement = static_cast<Strata::Placement>(0xFF);
+    assert(!Strata::validPlacement(invalidPlacement));
+    assert(Strata::allocate(64, invalidPlacement) == nullptr);
+    assert(Strata::calloc(4, 16, invalidPlacement) == nullptr);
+    assert(!Strata::supports(invalidPlacement));
+
     auto *aligned = Strata::allocate(Strata::AllocationRequest{
         .sizeBytes = 65,
         .placement = Strata::Placement::Internal,
@@ -70,6 +76,15 @@ int main() {
         assert(preserved[i] == 0x5A);
     }
     Strata::free(preserved);
+
+    auto *invalidPreserved = static_cast<unsigned char *>(Strata::allocate(8));
+    assert(invalidPreserved != nullptr);
+    std::memset(invalidPreserved, 0xA5, 8);
+    assert(Strata::reallocate(invalidPreserved, 32, invalidPlacement) == nullptr);
+    for (std::size_t i = 0; i < 8; ++i) {
+        assert(invalidPreserved[i] == 0xA5);
+    }
+    Strata::free(invalidPreserved);
 
     Strata::free(nullptr);
     return 0;

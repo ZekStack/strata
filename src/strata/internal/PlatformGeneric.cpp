@@ -2,6 +2,10 @@
 
 #if !defined(ESP32)
 
+#if defined(_MSC_VER)
+#error "Strata v0.1.0 generic backend is not supported with MSVC; use a GCC/Clang C++20 toolchain"
+#endif
+
 #include <cstdlib>
 #include <limits>
 
@@ -37,7 +41,9 @@ void *allocate(
     std::size_t alignment,
     Placement placement,
     Capability capabilities) noexcept {
-    if (placement == Placement::RequireExternal || capabilities != Capability::None) {
+    if (!validPlacement(placement) ||
+        placement == Placement::RequireExternal ||
+        capabilities != Capability::None) {
         return nullptr;
     }
 
@@ -45,7 +51,7 @@ void *allocate(
 }
 
 void *calloc(std::size_t count, std::size_t sizeBytes, Placement placement) noexcept {
-    if (placement == Placement::RequireExternal) {
+    if (!validPlacement(placement) || placement == Placement::RequireExternal) {
         return nullptr;
     }
 
@@ -53,7 +59,7 @@ void *calloc(std::size_t count, std::size_t sizeBytes, Placement placement) noex
 }
 
 void *reallocate(void *ptr, std::size_t newSizeBytes, Placement placement) noexcept {
-    if (placement == Placement::RequireExternal) {
+    if (!validPlacement(placement) || placement == Placement::RequireExternal) {
         return nullptr;
     }
 

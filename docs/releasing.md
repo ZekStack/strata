@@ -11,8 +11,9 @@ Before tagging a release:
 3. Confirm `library.json` and `library.properties` contain the same semantic version.
 4. Confirm `CHANGELOG.md` has a non-empty section for that version.
 5. Confirm the release commit is the commit that should become the public source archive.
+6. If the release is intended to be a public ZekStack library, confirm the GitHub repository visibility is public before pushing the release tag.
 
-`scripts/validate_release_version.py` enforces the metadata/version/changelog requirements in CI.
+`scripts/validate_release_version.py` enforces the metadata/version/changelog requirements in CI. Repository visibility is an organization/repository setting and must be checked separately.
 
 ## Create v0.1.0
 

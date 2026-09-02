@@ -146,9 +146,7 @@ void *dma = Strata::allocate(Strata::AllocationRequest{
 Strata::Buffer buffer(4096, Strata::Placement::PreferExternal);
 auto object = Strata::makeUnique<MyType>(Strata::Placement::PreferExternal, constructorArg);
 auto values = Strata::makeVector<int>(Strata::Placement::PreferExternal);
-
-Strata::MemoryStats stats;
-Strata::memoryStats(Strata::Region::Internal, stats);
+auto stats = Strata::memoryStats(Strata::Region::Internal);
 
 Strata::free(raw);
 Strata::free(dma);

@@ -2,6 +2,15 @@
 
 All notable changes to Strata are documented in this file.
 
+## 0.1.1
+
+- Add reusable `Strata::MemoryPolicy` with consistent general-allocation and task-stack placement fields for consuming ZekStack library configuration.
+- Define the ecosystem memory-policy contract, including safety-precedence, explicit inheritance, and requested-placement versus observed-region rules.
+- Add optional move-only FreeRTOS `Mutex` and `RecursiveMutex` owners using static FreeRTOS creation APIs and internal Strata-backed control storage.
+- Add host and ESP32 backend contracts for memory policy and mutex ownership, plus ESP32/ESP32-S3/ESP32-C3/ESP32-P4 example coverage.
+- Add a CI source audit preventing dynamic FreeRTOS mutex creation from entering Strata production code.
+- Extend API, configuration, architecture, migration, examples, README, and ecosystem-adoption documentation for the `v0.1.1` contract.
+
 ## 0.1.0
 
 - Add portable `Placement` and `Region` vocabulary with generic and ESP32 backends.

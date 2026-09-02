@@ -44,9 +44,29 @@ Requested placement and actual region are deliberately different concepts. A `Pr
 
 `Capability` describes required allocation properties such as DMA or executable memory. Capabilities are hard requirements and are preserved across placement fallback.
 
+### MemoryPolicy
+
+`MemoryPolicy` packages the two placement categories that recur in higher-level ZekStack library configuration: ordinary library-owned allocations and task stacks. It is a local value type, not a global Strata configuration object. Safety requirements may tighten either field for a specific resource.
+
 The public core vocabulary intentionally contains no ESP-IDF heap flags, PSRAM-specific enum values, FreeRTOS types, ArduinoJson types, or PMR types.
 
 ## Layering
+
+A useful mental model is:
+
+```text
+policy vocabulary
+    MemoryPolicy / Placement / Region / Capability
+
+ownership primitives
+    Buffer / Allocator / typed ownership
+    optional Task / Queue / Mutex
+
+platform backend
+    generic / ESP32
+```
+
+Strata defines memory-policy vocabulary and low-level ownership mechanisms. Consuming libraries decide which allocations are governed by configurable policy and which require stricter placement for correctness.
 
 ### Core allocation
 
@@ -78,11 +98,11 @@ Typed allocation/construction helpers and `UniquePtr` build object lifetime on t
 
 The optional ArduinoJson 7 allocator adapter forwards document allocation through a Strata placement policy. ArduinoJson remains a caller-supplied dependency and the allocator lifetime remains explicit.
 
-### FreeRTOS tasks and queues
+### FreeRTOS tasks, queues, and mutexes
 
-The optional FreeRTOS layer owns low-level static task/queue memory and exposes native handles for infrastructure integration. It does not replace Worker or become a general task framework.
+The optional FreeRTOS layer owns low-level static task/queue/mutex memory and exposes native handles for infrastructure integration. It does not replace Worker or become a general task framework.
 
-Task stacks may use external memory only when the calling subsystem can tolerate the platform's cache/flash restrictions. ISR-accessible queues require internal item storage under the current contract.
+Task stacks may use external memory only when the calling subsystem can tolerate the platform's cache/flash restrictions. ISR-accessible queues require internal item storage under the current contract. Mutex and recursive-mutex control blocks are always internal and are created with FreeRTOS static APIs.
 
 ## Platform boundary
 
@@ -128,17 +148,19 @@ The stable failure rules are:
 3. `PreferExternal` is appropriate only when internal fallback is semantically acceptable.
 4. `RequireExternal` is appropriate only when failure is preferable to consuming internal memory.
 5. Diagnostics distinguish requested policy from observed region.
-6. Strata has no required global initialization and no hidden mutable global default placement.
-7. Advanced diagnostics are opt-in and must not introduce allocation registries, dynamic diagnostic allocation, allocator recursion, or mandatory allocation-path overhead.
+6. `MemoryPolicy` is a caller/library default; hard resource requirements always take precedence.
+7. `Placement::Default` means backend default and is never an inheritance sentinel.
+8. Strata has no required global initialization and no hidden mutable global default placement.
+9. Advanced diagnostics are opt-in and must not introduce allocation registries, dynamic diagnostic allocation, allocator recursion, or mandatory allocation-path overhead.
 
 ## API stability boundary
 
-Phase 12 established the stable core API for ecosystem migration. The completed `v0.1.0` roadmap adds advanced diagnostics as an additive layer while preserving these names and semantics:
+The `v0.1.0` placement and failure contracts remain the stable core. `v0.1.1` adds `MemoryPolicy` and optional FreeRTOS mutex ownership while preserving those semantics:
 
-- `Placement`, `Region`, and `Capability`;
+- `Placement`, `Region`, `Capability`, and `MemoryPolicy`;
 - `AllocationRequest` and the raw allocation functions;
 - diagnostics and support queries;
 - typed ownership, `Buffer`, `Allocator<T>`, and STL factories;
-- optional `MemoryResource`, ArduinoJson, FreeRTOS task, and FreeRTOS queue adapters behind their explicit include paths.
+- optional `MemoryResource`, ArduinoJson, FreeRTOS task, FreeRTOS queue, and FreeRTOS mutex adapters behind their explicit include paths.
 
 Future work should not make platform-specific types part of the core vocabulary or weaken existing placement/failure guarantees.

@@ -2,6 +2,8 @@
 
 Strata has no global runtime configuration object. Configuration is expressed through build settings and per-allocation/per-task requests.
 
+`Strata::MemoryPolicy` does not change that rule. It is a reusable value object for embedding in consuming-library configuration structures so ZekStack libraries can expose consistent `allocation` and `taskStack` policy. It never configures Strata globally.
+
 ## C++ standard
 
 Strata requires C++20. PlatformIO projects should remove the Arduino default C++11 flag and add C++20 explicitly.
@@ -22,7 +24,7 @@ The core library selects its backend at compile time:
 
 No caller-side backend object is required.
 
-The `v0.1.0` generic backend is validated with GCC/Clang-compatible C++20 toolchains. MSVC is intentionally rejected because its CRT does not provide the `std::aligned_alloc`/`std::free` pairing used by the generic over-aligned allocation contract. Native MSVC support requires a backend with matching aligned-allocation provenance and is outside the `v0.1.0` compatibility contract.
+The generic backend is validated with GCC/Clang-compatible C++20 toolchains. MSVC is intentionally rejected because its CRT does not provide the `std::aligned_alloc`/`std::free` pairing used by the generic over-aligned allocation contract. Native MSVC support requires a backend with matching aligned-allocation provenance and is outside the current compatibility contract.
 
 ## External memory
 
@@ -31,6 +33,18 @@ ESP32 external placement requires PSRAM to be available in the active board conf
 - `PreferExternal` falls back to internal memory when the full request can still be satisfied.
 - `RequireExternal` fails instead of degrading.
 - `regionOf()` reports where a successful allocation actually resides.
+
+## Memory policy for consuming libraries
+
+The shared configuration shape is:
+
+```cpp
+Strata::MemoryPolicy memory;
+memory.allocation = Strata::Placement::PreferExternal;
+memory.taskStack = Strata::Placement::Internal;
+```
+
+`allocation` is the default for ordinary movable library-owned dynamic storage. `taskStack` is the default for library-owned task stacks. Safety/capability requirements may always tighten those choices. `Placement::Default` retains its backend-default meaning and must not be used as an inheritance sentinel. See `memory-policy.md` for the ecosystem contract.
 
 ## Advanced diagnostics
 
@@ -70,9 +84,11 @@ Keep the `MemoryResource` object alive for at least as long as every PMR contain
 
 ## FreeRTOS integration
 
-FreeRTOS support is opt-in through `<strata/freertos/Task.h>` and `<strata/freertos/Queue.h>` and requires static allocation support.
+FreeRTOS support is opt-in through `<strata/freertos/Task.h>`, `<strata/freertos/Queue.h>`, and `<strata/freertos/Mutex.h>` and requires static allocation support.
 
 The task integration additionally requires `INCLUDE_vTaskDelete == 1` and `INCLUDE_uxTaskGetStackHighWaterMark == 1`. `Task.h` checks these settings at compile time so a FreeRTOS configuration that cannot satisfy the public task API fails with an actionable error instead of failing later on missing symbols.
+
+The mutex integration additionally requires `configUSE_MUTEXES == 1` and `configUSE_RECURSIVE_MUTEXES == 1`. Mutex control storage is always internal and is allocated through Strata before using FreeRTOS static creation APIs.
 
 `TaskConfig` configures task name, stack bytes, stack placement, priority, and affinity. Use internal stack placement for tasks that may execute while flash/cache is disabled.
 

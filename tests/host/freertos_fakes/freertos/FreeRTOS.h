@@ -11,6 +11,7 @@ using configSTACK_DEPTH_TYPE = std::uint32_t;
 
 inline constexpr BaseType_t pdFALSE = 0;
 inline constexpr BaseType_t pdTRUE = 1;
+inline constexpr TickType_t portMAX_DELAY = 0xFFFFFFFFU;
 
 struct StaticTask_t {
 	std::uint32_t marker{0};
@@ -27,6 +28,8 @@ struct StaticQueue_t {
 };
 
 #define configSUPPORT_STATIC_ALLOCATION 1
+#define configUSE_MUTEXES 1
+#define configUSE_RECURSIVE_MUTEXES 1
 #define INCLUDE_vTaskDelete 1
 #define INCLUDE_uxTaskGetStackHighWaterMark 1
 #define tskIDLE_PRIORITY 0U

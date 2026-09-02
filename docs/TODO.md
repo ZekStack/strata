@@ -19,20 +19,20 @@ This document is the implementation checklist for Strata itself and the later Ze
 
 ## Phase 2 — Raw allocation engine
 
-- [ ] Add `allocate(sizeBytes, placement)`.
-- [ ] Add `calloc(count, size, placement)` with overflow-safe multiplication.
-- [ ] Add `reallocate(ptr, newSize, placement)` with documented migration semantics.
-- [ ] Add `free(ptr)`.
-- [ ] Introduce an extensible `AllocationRequest` containing size, placement, and alignment.
-- [ ] Implement generic backend allocation through standard C/C++ allocation primitives.
-- [ ] Implement ESP32 internal allocation through ESP-IDF heap capabilities.
-- [ ] Implement ESP32 external/PSRAM allocation as the backend for external placement.
-- [ ] Implement `PreferExternal` fallback to internal memory.
-- [ ] Ensure `RequireExternal` fails rather than degrading.
-- [ ] Define zero-size allocation behavior.
-- [ ] Define alignment validation and failure behavior.
-- [ ] Add host allocation/fallback tests.
-- [ ] Add ESP32 internal/external placement tests.
+- [x] Add `allocate(sizeBytes, placement)`.
+- [x] Add `calloc(count, size, placement)` with overflow-safe multiplication.
+- [x] Add `reallocate(ptr, newSize, placement)` with documented migration semantics.
+- [x] Add `free(ptr)`.
+- [x] Introduce an extensible `AllocationRequest` containing size, placement, and alignment.
+- [x] Implement generic backend allocation through standard C/C++ allocation primitives.
+- [x] Implement ESP32 internal allocation through ESP-IDF heap capabilities.
+- [x] Implement ESP32 external/PSRAM allocation as the backend for external placement.
+- [x] Implement `PreferExternal` fallback to internal memory.
+- [x] Ensure `RequireExternal` fails rather than degrading.
+- [x] Define zero-size allocation behavior.
+- [x] Define alignment validation and failure behavior.
+- [x] Add host allocation/fallback tests.
+- [x] Add ESP32 internal/external placement tests.
 
 ## Phase 3 — Region introspection and diagnostics
 

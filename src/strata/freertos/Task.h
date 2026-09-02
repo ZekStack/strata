@@ -117,8 +117,8 @@ public:
         }
 
         data_ = static_cast<StackType_t *>(storage);
-        sizeBytes_ = roundedBytes;
         requestedBytes_ = sizeBytes;
+        allocatedBytes_ = roundedBytes;
         depth_ = depth;
         placement_ = placement;
         return true;
@@ -127,55 +127,32 @@ public:
     void reset() noexcept {
         Strata::free(data_);
         data_ = nullptr;
-        sizeBytes_ = 0;
         requestedBytes_ = 0;
+        allocatedBytes_ = 0;
         depth_ = 0;
     }
 
-    [[nodiscard]] StackType_t *data() noexcept {
-        return data_;
-    }
-
-    [[nodiscard]] const StackType_t *data() const noexcept {
-        return data_;
-    }
-
-    [[nodiscard]] std::size_t sizeBytes() const noexcept {
-        return sizeBytes_;
-    }
-
-    [[nodiscard]] std::size_t requestedBytes() const noexcept {
-        return requestedBytes_;
-    }
-
-    [[nodiscard]] configSTACK_DEPTH_TYPE depth() const noexcept {
-        return depth_;
-    }
-
-    [[nodiscard]] Placement placement() const noexcept {
-        return placement_;
-    }
-
-    [[nodiscard]] Region region() const noexcept {
-        return Strata::regionOf(data_);
-    }
-
-    [[nodiscard]] explicit operator bool() const noexcept {
-        return data_ != nullptr;
-    }
+    [[nodiscard]] StackType_t *data() noexcept { return data_; }
+    [[nodiscard]] const StackType_t *data() const noexcept { return data_; }
+    [[nodiscard]] std::size_t sizeBytes() const noexcept { return requestedBytes_; }
+    [[nodiscard]] std::size_t allocatedBytes() const noexcept { return allocatedBytes_; }
+    [[nodiscard]] configSTACK_DEPTH_TYPE depth() const noexcept { return depth_; }
+    [[nodiscard]] Placement placement() const noexcept { return placement_; }
+    [[nodiscard]] Region region() const noexcept { return Strata::regionOf(data_); }
+    [[nodiscard]] explicit operator bool() const noexcept { return data_ != nullptr; }
 
 private:
     void moveFrom(TaskStack &other) noexcept {
         data_ = std::exchange(other.data_, nullptr);
-        sizeBytes_ = std::exchange(other.sizeBytes_, 0);
         requestedBytes_ = std::exchange(other.requestedBytes_, 0);
+        allocatedBytes_ = std::exchange(other.allocatedBytes_, 0);
         depth_ = std::exchange(other.depth_, 0);
         placement_ = other.placement_;
     }
 
     StackType_t *data_{nullptr};
-    std::size_t sizeBytes_{0};
     std::size_t requestedBytes_{0};
+    std::size_t allocatedBytes_{0};
     configSTACK_DEPTH_TYPE depth_{0};
     Placement placement_{Placement::Internal};
 };
@@ -203,13 +180,58 @@ public:
         return *this;
     }
 
-    [[nodiscard]] bool create(TaskFunction function, void *context, const TaskConfig &config) noexcept {
-        reset();
+    [[nodiscard]] static Task create(
+        TaskFunction function,
+        void *context,
+        const TaskConfig &config) noexcept {
+        Task task;
+        if (!task.start(function, context, config)) {
+            task.reset();
+        }
+        return task;
+    }
 
+    void reset() noexcept {
+        if (handle_ != nullptr) {
+            vTaskDelete(handle_);
+            handle_ = nullptr;
+        }
+        stack_.reset();
+        Strata::free(controlBlock_);
+        controlBlock_ = nullptr;
+    }
+
+    [[nodiscard]] TaskHandle handle() const noexcept { return handle_; }
+    [[nodiscard]] bool valid() const noexcept { return handle_ != nullptr; }
+    [[nodiscard]] explicit operator bool() const noexcept { return valid(); }
+    [[nodiscard]] std::size_t stackSizeBytes() const noexcept { return stack_.sizeBytes(); }
+    [[nodiscard]] std::size_t allocatedStackBytes() const noexcept { return stack_.allocatedBytes(); }
+    [[nodiscard]] Placement stackPlacement() const noexcept { return stack_.placement(); }
+    [[nodiscard]] Region stackRegion() const noexcept { return stack_.region(); }
+
+    [[nodiscard]] std::size_t stackHighWaterMarkBytes() const noexcept {
+        if (handle_ == nullptr) {
+            return 0;
+        }
+        return Detail::highWaterMarkBytes(uxTaskGetStackHighWaterMark(handle_));
+    }
+
+private:
+    [[nodiscard]] bool start(TaskFunction function, void *context, const TaskConfig &config) noexcept {
         if (function == nullptr || config.name == nullptr || config.stackBytes == 0) {
             return false;
         }
         if (!stack_.allocate(config.stackBytes, config.stackPlacement)) {
+            return false;
+        }
+
+        controlBlock_ = static_cast<StaticTask_t *>(Strata::allocate(AllocationRequest{
+            .sizeBytes = sizeof(StaticTask_t),
+            .placement = Placement::Internal,
+            .alignment = alignof(StaticTask_t),
+        }));
+        if (controlBlock_ == nullptr) {
+            stack_.reset();
             return false;
         }
 
@@ -221,11 +243,10 @@ public:
             context,
             config.priority,
             stack_.data(),
-            &controlBlock_,
+            controlBlock_,
             config.affinity);
 #else
         if (config.affinity != NoAffinity) {
-            stack_.reset();
             return false;
         }
         handle_ = xTaskCreateStatic(
@@ -235,69 +256,20 @@ public:
             context,
             config.priority,
             stack_.data(),
-            &controlBlock_);
+            controlBlock_);
 #endif
 
-        if (handle_ == nullptr) {
-            stack_.reset();
-            return false;
-        }
-
-        return true;
-    }
-
-    void reset() noexcept {
-        if (handle_ != nullptr) {
-            vTaskDelete(handle_);
-            handle_ = nullptr;
-        }
-        stack_.reset();
-    }
-
-    [[nodiscard]] TaskHandle handle() const noexcept {
-        return handle_;
-    }
-
-    [[nodiscard]] bool valid() const noexcept {
         return handle_ != nullptr;
     }
 
-    [[nodiscard]] explicit operator bool() const noexcept {
-        return valid();
-    }
-
-    [[nodiscard]] std::size_t stackBytes() const noexcept {
-        return stack_.sizeBytes();
-    }
-
-    [[nodiscard]] std::size_t requestedStackBytes() const noexcept {
-        return stack_.requestedBytes();
-    }
-
-    [[nodiscard]] Placement stackPlacement() const noexcept {
-        return stack_.placement();
-    }
-
-    [[nodiscard]] Region stackRegion() const noexcept {
-        return stack_.region();
-    }
-
-    [[nodiscard]] std::size_t stackHighWaterMarkBytes() const noexcept {
-        if (handle_ == nullptr) {
-            return 0;
-        }
-        return Detail::highWaterMarkBytes(uxTaskGetStackHighWaterMark(handle_));
-    }
-
-private:
     void moveFrom(Task &other) noexcept {
         handle_ = std::exchange(other.handle_, nullptr);
-        controlBlock_ = other.controlBlock_;
+        controlBlock_ = std::exchange(other.controlBlock_, nullptr);
         stack_ = std::move(other.stack_);
     }
 
     TaskHandle handle_{nullptr};
-    StaticTask_t controlBlock_{};
+    StaticTask_t *controlBlock_{nullptr};
     TaskStack stack_{};
 };
 

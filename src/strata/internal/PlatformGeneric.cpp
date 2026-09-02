@@ -32,8 +32,12 @@ const char *platformName() noexcept {
     return "generic";
 }
 
-void *allocate(std::size_t sizeBytes, std::size_t alignment, Placement placement) noexcept {
-    if (placement == Placement::RequireExternal) {
+void *allocate(
+    std::size_t sizeBytes,
+    std::size_t alignment,
+    Placement placement,
+    Capability capabilities) noexcept {
+    if (placement == Placement::RequireExternal || capabilities != Capability::None) {
         return nullptr;
     }
 
@@ -61,9 +65,6 @@ void free(void *ptr) noexcept {
 }
 
 Region regionOf(const void *) noexcept {
-    // Standard C/C++ does not expose a portable way to prove which heap region
-    // owns an arbitrary pointer. Avoid a mandatory allocation registry solely
-    // for diagnostics and report the location as unknown instead.
     return Region::Unknown;
 }
 
@@ -76,7 +77,6 @@ bool supports(Placement placement) noexcept {
         case Placement::RequireExternal:
             return false;
     }
-
     return false;
 }
 
@@ -88,13 +88,14 @@ bool supports(Region region) noexcept {
         case Region::External:
             return false;
     }
-
     return false;
 }
 
+bool supports(Capability capabilities) noexcept {
+    return capabilities == Capability::None;
+}
+
 MemoryStats memoryStats(Region) noexcept {
-    // There is no portable standard-library API for process-heap totals,
-    // minimum free memory, or largest free blocks.
     return {};
 }
 

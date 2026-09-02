@@ -39,6 +39,7 @@ jobs:
             -Isrc \
             test/host/placement_contract_test.cpp \
             src/strata/Allocation.cpp \
+            src/strata/Diagnostics.cpp \
             src/strata/internal/PlatformGeneric.cpp \
             src/strata/internal/PlatformEsp32.cpp \
             -o build/placement-contract-test
@@ -50,12 +51,25 @@ jobs:
             -Isrc \
             test/host/allocation_contract_test.cpp \
             src/strata/Allocation.cpp \
+            src/strata/Diagnostics.cpp \
             src/strata/internal/PlatformGeneric.cpp \
             src/strata/internal/PlatformEsp32.cpp \
             -o build/allocation-contract-test
           ./build/allocation-contract-test
 
-      - name: Compile and run ESP32 backend contract
+      - name: Compile and run generic diagnostics contract
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            -Isrc \
+            test/host/diagnostics_contract_test.cpp \
+            src/strata/Allocation.cpp \
+            src/strata/Diagnostics.cpp \
+            src/strata/internal/PlatformGeneric.cpp \
+            src/strata/internal/PlatformEsp32.cpp \
+            -o build/diagnostics-contract-test
+          ./build/diagnostics-contract-test
+
+      - name: Compile and run ESP32 allocation backend contract
         run: |
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
             -DESP32 \
@@ -63,9 +77,23 @@ jobs:
             -Isrc \
             test/host/esp32_allocation_backend_test.cpp \
             src/strata/Allocation.cpp \
+            src/strata/Diagnostics.cpp \
             src/strata/internal/PlatformEsp32.cpp \
             -o build/esp32-allocation-backend-test
           ./build/esp32-allocation-backend-test
+
+      - name: Compile and run ESP32 diagnostics backend contract
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            -DESP32 \
+            -Itest/host/fakes \
+            -Isrc \
+            test/host/esp32_diagnostics_backend_test.cpp \
+            src/strata/Allocation.cpp \
+            src/strata/Diagnostics.cpp \
+            src/strata/internal/PlatformEsp32.cpp \
+            -o build/esp32-diagnostics-backend-test
+          ./build/esp32-diagnostics-backend-test
 
   build-example:
     runs-on: ubuntu-latest
@@ -111,6 +139,15 @@ jobs:
       - name: Build Allocation example
         run: |
           pio ci examples/Allocation \
+            --board ${{ matrix.board }} \
+            --lib="." \
+            --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \
+            --project-option "build_unflags=-std=gnu++11" \
+            --project-option "build_flags=-std=gnu++20"
+
+      - name: Build Diagnostics example
+        run: |
+          pio ci examples/Diagnostics \
             --board ${{ matrix.board }} \
             --lib="." \
             --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \

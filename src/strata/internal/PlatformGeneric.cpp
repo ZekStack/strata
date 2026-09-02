@@ -60,6 +60,44 @@ void free(void *ptr) noexcept {
     std::free(ptr);
 }
 
+Region regionOf(const void *) noexcept {
+    // Standard C/C++ does not expose a portable way to prove which heap region
+    // owns an arbitrary pointer. Avoid a mandatory allocation registry solely
+    // for diagnostics and report the location as unknown instead.
+    return Region::Unknown;
+}
+
+bool supports(Placement placement) noexcept {
+    switch (placement) {
+        case Placement::Default:
+        case Placement::Internal:
+        case Placement::PreferExternal:
+            return true;
+        case Placement::RequireExternal:
+            return false;
+    }
+
+    return false;
+}
+
+bool supports(Region region) noexcept {
+    switch (region) {
+        case Region::Internal:
+            return true;
+        case Region::Unknown:
+        case Region::External:
+            return false;
+    }
+
+    return false;
+}
+
+MemoryStats memoryStats(Region) noexcept {
+    // There is no portable standard-library API for process-heap totals,
+    // minimum free memory, or largest free blocks.
+    return {};
+}
+
 } // namespace Strata::Internal
 
 #endif

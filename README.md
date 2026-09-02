@@ -6,7 +6,7 @@ Strata is a lightweight, standalone C++ memory placement and allocation utility 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!NOTE]
-> Strata is under active development. Phases 1–4 provide placement, raw allocation, diagnostics, typed storage, and unique ownership primitives. STL allocators and optional FreeRTOS integration are planned in later phases.
+> Strata is under active development. Phases 1–5 provide placement, raw allocation, diagnostics, typed ownership, and placement-aware STL allocation. Owned buffers and optional FreeRTOS integration are planned in later phases.
 
 ## Design goals
 
@@ -15,7 +15,7 @@ Strata is a lightweight, standalone C++ memory placement and allocation utility 
 - **Explicit fallback semantics** — callers can distinguish preference from requirement.
 - **Platform-owned mechanics** — ESP-IDF, FreeRTOS, and other platform details stay behind Strata boundaries.
 - **Infrastructure, not orchestration** — Strata may provide low-level FreeRTOS memory helpers later, but Worker remains the high-level job/task framework.
-- **Deterministic failure** — ordinary allocation APIs return null/empty results; they do not require exceptions or abort-on-failure behavior.
+- **Deterministic core failure** — raw and typed ownership APIs return null/empty results; the standard allocator adapter follows STL exception semantics when exceptions are enabled.
 
 ## Quick start
 
@@ -29,40 +29,29 @@ Strata::free(fast);
 Strata::free(bulk);
 ```
 
-Typed ownership uses the same placement rules:
+Placement-aware STL containers use the same memory policy:
 
 ```cpp
-struct State {
-    explicit State(int value) noexcept : value(value) {}
-    ~State() noexcept = default;
-    int value;
-};
+auto values = Strata::makeVector<int>(Strata::Placement::PreferExternal);
+values.push_back(42);
 
-auto state = Strata::makeUnique<State>(Strata::Placement::PreferExternal, 42);
+auto text = Strata::makeString(Strata::Placement::Internal);
+text = "Strata";
+
+auto shared = Strata::makeShared<int>(Strata::Placement::PreferExternal, 7);
 ```
 
-## Raw allocation API
+## Core APIs
 
-```cpp
-void *Strata::allocate(std::size_t sizeBytes, Placement placement = Placement::Default) noexcept;
-void *Strata::allocate(const AllocationRequest &request) noexcept;
-void *Strata::calloc(std::size_t count, std::size_t sizeBytes, Placement placement = Placement::Default) noexcept;
-void *Strata::reallocate(void *ptr, std::size_t newSizeBytes, Placement placement = Placement::Default) noexcept;
-void Strata::free(void *ptr) noexcept;
-```
+Strata provides raw allocation, diagnostics, typed storage/ownership, and the stateful `Allocator<T>` standard allocator adapter. `Vector<T>` and `String` remain ordinary STL types with a Strata allocator, while `makeVector()`, `makeString()`, and `makeMap()` are convenience factories.
 
-The raw allocation behavior is deterministic: zero-sized requests return `nullptr`, `calloc` rejects multiplication overflow, failed reallocation leaves the original allocation valid, `free(nullptr)` is a no-op, and required placement constraints never silently degrade.
+Required placement constraints never silently degrade. `PreferExternal` may fall back to internal memory; `RequireExternal` fails if external memory is unavailable.
 
-## Typed storage and ownership
+## Allocation failure and exceptions
 
-Phase 4 adds:
+Raw allocation and typed ownership APIs preserve deterministic embedded behavior by returning `nullptr` or an empty smart pointer on ordinary allocation failure.
 
-- `allocateArray<T>(count, placement)` for overflow-safe, correctly aligned **raw typed storage**;
-- `create<T>(placement, args...)` and `destroy(ptr)` for single-object lifetime management;
-- `Deleter<T>` and `UniquePtr<T>` for Strata-backed unique ownership;
-- `makeUnique<T>(placement, args...)` for allocation, construction, and RAII ownership in one operation.
-
-`allocateArray<T>()` does not construct elements and `Strata::free()` does not run array element destructors. Object helpers require non-throwing construction/destruction so ordinary embedded failure remains a null/empty result rather than relying on exception cleanup.
+`Strata::Allocator<T>` follows standard allocator expectations: with exceptions enabled, allocation failure throws `std::bad_alloc`. With exceptions disabled, it returns `nullptr`; standard containers are not required to recover safely from that condition. No-exception code that must handle OOM should therefore prefer the raw/typed Strata APIs rather than STL-container OOM recovery.
 
 ## Public terminology
 
@@ -81,7 +70,7 @@ Phase 4 adds:
 
 ## Platform model
 
-- **Generic** — `Default`, `Internal`, and `PreferExternal` use the standard process heap. Because the generic backend has no external-memory provider, `RequireExternal` returns `nullptr`. Pointer regions and non-portable heap statistics remain explicitly unavailable/unknown.
+- **Generic** — `Default`, `Internal`, and `PreferExternal` use the standard process heap. Because the generic backend has no external-memory provider, `RequireExternal` fails. Pointer regions and non-portable heap statistics remain explicitly unavailable/unknown.
 - **ESP32** — placement maps to ESP-IDF heap capabilities, region introspection uses native memory-range helpers, and internal/external heap diagnostics come from capability-specific heap statistics. `PreferExternal` retries internal memory only after the external attempt fails.
 
 ESP32 external memory remains subject to the platform's cache, flash-operation, DMA, ISR, and task-stack restrictions. Strata does not make external memory safe for contexts where the platform itself forbids it.
@@ -112,7 +101,8 @@ Arduino/libraries/Strata
 
 - [`docs/architecture.md`](docs/architecture.md) — architectural boundaries, allocation semantics, and platform mapping.
 - [`docs/diagnostics.md`](docs/diagnostics.md) — region introspection, support queries, and heap statistics.
-- [`docs/typed-ownership.md`](docs/typed-ownership.md) — typed raw storage, object lifetime, and RAII ownership.
+- [`docs/typed-ownership.md`](docs/typed-ownership.md) — typed raw storage, object lifetime, and unique ownership.
+- [`docs/stl.md`](docs/stl.md) — stateful allocator semantics, STL helpers, shared ownership, and failure behavior.
 - [`docs/TODO.md`](docs/TODO.md) — complete phased implementation and migration roadmap.
 
 ## Compatibility
@@ -124,8 +114,8 @@ Arduino/libraries/Strata
 | ESP32 backend | Arduino ESP32 / ESP-IDF-compatible build environment |
 | External memory | ESP32 external RAM through ESP-IDF heap capabilities |
 | Dependencies | none |
-| Exceptions | not required by production APIs; typed lifetime helpers require non-throwing constructors/destructors |
-| Status | Early-stage `0.1.0`; Phase 4 typed ownership available |
+| Exceptions | raw/typed APIs do not require exceptions; STL allocator throws `std::bad_alloc` when exceptions are enabled |
+| Status | Early-stage `0.1.0`; Phase 5 STL allocator support available |
 
 ## ZekStack adoption
 

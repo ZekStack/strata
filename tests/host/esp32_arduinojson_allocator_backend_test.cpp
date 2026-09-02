@@ -1,3 +1,4 @@
+#include <strata/Diagnostics.h>
 #include <strata/arduinojson/Allocator.h>
 
 #include <ArduinoJson.h>

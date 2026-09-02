@@ -1,15 +1,8 @@
 # Roadmap
 
-This document tracks remaining Strata library work. Completed functionality belongs in `CHANGELOG.md`; ecosystem migration work is tracked separately in `ecosystem-adoption.md`.
+This document tracks remaining Strata library work. The foundational implementation phases are complete; completed functionality belongs in `CHANGELOG.md`, while ecosystem migration work is tracked separately in `ecosystem-adoption.md`.
 
-## Phase 12 — API stability and release hardening
-
-- [ ] Add dedicated placement/fallback documentation if the existing API docs become too dense.
-- [ ] Expand ESP32 backend and PSRAM implementation documentation.
-- [ ] Add migration recipes from raw allocation and bespoke PSRAM allocators.
-- [ ] Audit public naming consistency and remove accidental platform leakage.
-- [ ] Audit exception/abort assumptions and embedded failure behavior.
-- [ ] Treat the resulting API as the stable base for ecosystem migrations.
+The Phase 12 API, placement/fallback semantics, platform boundaries, and failure contracts are the stable base for ZekStack ecosystem adoption. Future additions should preserve those contracts unless a deliberate breaking release changes them.
 
 ## Advanced diagnostics
 

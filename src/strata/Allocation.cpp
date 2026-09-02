@@ -22,15 +22,23 @@ void *allocate(std::size_t sizeBytes, Placement placement) noexcept {
         .sizeBytes = sizeBytes,
         .placement = placement,
         .alignment = DefaultAlignment,
+        .capabilities = Capability::None,
     });
 }
 
 void *allocate(const AllocationRequest &request) noexcept {
-    if (request.sizeBytes == 0 || !isValidAlignment(request.alignment)) {
+    if (
+        request.sizeBytes == 0 ||
+        !isValidAlignment(request.alignment) ||
+        !validCapabilities(request.capabilities)) {
         return nullptr;
     }
 
-    return Internal::allocate(request.sizeBytes, request.alignment, request.placement);
+    return Internal::allocate(
+        request.sizeBytes,
+        request.alignment,
+        request.placement,
+        request.capabilities);
 }
 
 void *calloc(std::size_t count, std::size_t sizeBytes, Placement placement) noexcept {

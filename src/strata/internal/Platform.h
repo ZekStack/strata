@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Capability.h"
 #include "../Diagnostics.h"
 #include "../Placement.h"
 
@@ -19,7 +20,8 @@ enum class PlatformKind : std::uint8_t {
 [[nodiscard]] void *allocate(
     std::size_t sizeBytes,
     std::size_t alignment,
-    Placement placement) noexcept;
+    Placement placement,
+    Capability capabilities) noexcept;
 [[nodiscard]] void *calloc(
     std::size_t count,
     std::size_t sizeBytes,
@@ -33,6 +35,7 @@ void free(void *ptr) noexcept;
 [[nodiscard]] Region regionOf(const void *ptr) noexcept;
 [[nodiscard]] bool supports(Placement placement) noexcept;
 [[nodiscard]] bool supports(Region region) noexcept;
+[[nodiscard]] bool supports(Capability capabilities) noexcept;
 [[nodiscard]] MemoryStats memoryStats(Region region) noexcept;
 
 } // namespace Strata::Internal

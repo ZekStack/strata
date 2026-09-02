@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Capability.h"
 #include "Placement.h"
 
 #include <cstddef>
@@ -17,6 +18,7 @@ struct MemoryStats {
 [[nodiscard]] Region regionOf(const void *ptr) noexcept;
 [[nodiscard]] bool supports(Placement placement) noexcept;
 [[nodiscard]] bool supports(Region region) noexcept;
+[[nodiscard]] bool supports(Capability capabilities) noexcept;
 [[nodiscard]] MemoryStats memoryStats(Region region) noexcept;
 
 } // namespace Strata

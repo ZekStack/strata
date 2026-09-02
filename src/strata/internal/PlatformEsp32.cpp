@@ -12,6 +12,37 @@ constexpr std::uint32_t DefaultCaps = MALLOC_CAP_8BIT;
 constexpr std::uint32_t InternalCaps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
 constexpr std::uint32_t ExternalCaps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
 
+[[nodiscard]] constexpr std::uint32_t capabilityCaps(Capability capabilities) noexcept {
+    std::uint32_t caps = 0;
+    if (hasCapability(capabilities, Capability::Dma)) {
+        caps |= MALLOC_CAP_DMA;
+    }
+    if (hasCapability(capabilities, Capability::Executable)) {
+        caps |= MALLOC_CAP_EXEC;
+    }
+    return caps;
+}
+
+[[nodiscard]] constexpr std::uint32_t byteCaps(Capability capabilities) noexcept {
+    return hasCapability(capabilities, Capability::Executable) ? 0U : MALLOC_CAP_8BIT;
+}
+
+[[nodiscard]] constexpr std::uint32_t placementCaps(
+    Placement placement,
+    Capability capabilities) noexcept {
+    const auto required = capabilityCaps(capabilities) | byteCaps(capabilities);
+    switch (placement) {
+        case Placement::Default:
+            return required;
+        case Placement::Internal:
+            return MALLOC_CAP_INTERNAL | required;
+        case Placement::PreferExternal:
+        case Placement::RequireExternal:
+            return MALLOC_CAP_SPIRAM | required;
+    }
+    return required;
+}
+
 [[nodiscard]] void *allocateWithCaps(
     std::size_t sizeBytes,
     std::size_t alignment,
@@ -19,7 +50,6 @@ constexpr std::uint32_t ExternalCaps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
     if (alignment <= alignof(std::max_align_t)) {
         return heap_caps_malloc(sizeBytes, caps);
     }
-
     return heap_caps_aligned_alloc(alignment, sizeBytes, caps);
 }
 
@@ -45,7 +75,6 @@ constexpr std::uint32_t ExternalCaps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
     if (!capsAvailable(caps)) {
         return {};
     }
-
     return MemoryStats{
         .totalBytes = heap_caps_get_total_size(caps),
         .freeBytes = heap_caps_get_free_size(caps),
@@ -64,21 +93,24 @@ const char *platformName() noexcept {
     return "esp32";
 }
 
-void *allocate(std::size_t sizeBytes, std::size_t alignment, Placement placement) noexcept {
-    switch (placement) {
-        case Placement::Default:
-            return allocateWithCaps(sizeBytes, alignment, DefaultCaps);
-        case Placement::Internal:
-            return allocateWithCaps(sizeBytes, alignment, InternalCaps);
-        case Placement::PreferExternal: {
-            auto *ptr = allocateWithCaps(sizeBytes, alignment, ExternalCaps);
-            return ptr != nullptr ? ptr : allocateWithCaps(sizeBytes, alignment, InternalCaps);
+void *allocate(
+    std::size_t sizeBytes,
+    std::size_t alignment,
+    Placement placement,
+    Capability capabilities) noexcept {
+    if (placement == Placement::PreferExternal) {
+        const auto externalCaps = placementCaps(Placement::RequireExternal, capabilities);
+        auto *ptr = allocateWithCaps(sizeBytes, alignment, externalCaps);
+        if (ptr != nullptr) {
+            return ptr;
         }
-        case Placement::RequireExternal:
-            return allocateWithCaps(sizeBytes, alignment, ExternalCaps);
+        return allocateWithCaps(
+            sizeBytes,
+            alignment,
+            placementCaps(Placement::Internal, capabilities));
     }
 
-    return nullptr;
+    return allocateWithCaps(sizeBytes, alignment, placementCaps(placement, capabilities));
 }
 
 void *calloc(std::size_t count, std::size_t sizeBytes, Placement placement) noexcept {
@@ -94,7 +126,6 @@ void *calloc(std::size_t count, std::size_t sizeBytes, Placement placement) noex
         case Placement::RequireExternal:
             return callocWithCaps(count, sizeBytes, ExternalCaps);
     }
-
     return nullptr;
 }
 
@@ -111,7 +142,6 @@ void *reallocate(void *ptr, std::size_t newSizeBytes, Placement placement) noexc
         case Placement::RequireExternal:
             return reallocateWithCaps(ptr, newSizeBytes, ExternalCaps);
     }
-
     return nullptr;
 }
 
@@ -135,7 +165,6 @@ Region regionOf(const void *ptr) noexcept {
 bool supports(Placement placement) noexcept {
     const bool hasInternal = capsAvailable(InternalCaps);
     const bool hasExternal = capsAvailable(ExternalCaps);
-
     switch (placement) {
         case Placement::Default:
             return capsAvailable(DefaultCaps);
@@ -146,7 +175,6 @@ bool supports(Placement placement) noexcept {
         case Placement::RequireExternal:
             return hasExternal;
     }
-
     return false;
 }
 
@@ -159,8 +187,14 @@ bool supports(Region region) noexcept {
         case Region::External:
             return capsAvailable(ExternalCaps);
     }
-
     return false;
+}
+
+bool supports(Capability capabilities) noexcept {
+    if (capabilities == Capability::None) {
+        return true;
+    }
+    return capsAvailable(capabilityCaps(capabilities) | byteCaps(capabilities));
 }
 
 MemoryStats memoryStats(Region region) noexcept {
@@ -172,7 +206,6 @@ MemoryStats memoryStats(Region region) noexcept {
         case Region::External:
             return statsForCaps(ExternalCaps);
     }
-
     return {};
 }
 

@@ -8,7 +8,6 @@ Region regionOf(const void *ptr) noexcept {
     if (ptr == nullptr) {
         return Region::Unknown;
     }
-
     return Internal::regionOf(ptr);
 }
 
@@ -18,6 +17,10 @@ bool supports(Placement placement) noexcept {
 
 bool supports(Region region) noexcept {
     return Internal::supports(region);
+}
+
+bool supports(Capability capabilities) noexcept {
+    return validCapabilities(capabilities) && Internal::supports(capabilities);
 }
 
 MemoryStats memoryStats(Region region) noexcept {

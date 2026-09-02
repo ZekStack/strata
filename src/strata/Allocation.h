@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Capability.h"
 #include "Placement.h"
 
 #include <cstddef>
@@ -12,6 +13,7 @@ struct AllocationRequest {
     std::size_t sizeBytes{0};
     Placement placement{Placement::Default};
     std::size_t alignment{DefaultAlignment};
+    Capability capabilities{Capability::None};
 };
 
 [[nodiscard]] void *allocate(std::size_t sizeBytes, Placement placement = Placement::Default) noexcept;

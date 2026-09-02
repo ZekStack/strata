@@ -68,12 +68,12 @@ This document is the implementation checklist for Strata itself and the later Ze
 
 ## Phase 6 — Owned `Buffer`
 
-- [ ] Add move-only RAII `Buffer`.
-- [ ] Add size, data, typed-data, placement, and actual-region accessors.
-- [ ] Add `resize()` while preserving the original requested placement.
-- [ ] Add `reset()` and `release()`.
-- [ ] Test move construction/assignment, resize migration, failed resize, and cleanup.
-- [ ] Add buffer example.
+- [x] Add move-only RAII `Buffer`.
+- [x] Add size, data, typed-data, placement, and actual-region accessors.
+- [x] Add `resize()` while preserving the original requested placement.
+- [x] Add `reset()` and `release()`.
+- [x] Test move construction/assignment, resize migration, failed resize, and cleanup.
+- [x] Add buffer example.
 
 ## Phase 7 — Advanced allocation capabilities
 

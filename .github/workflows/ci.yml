@@ -71,6 +71,11 @@ jobs:
           g++ -std=c++20 -fno-exceptions -Wall -Wextra -Wpedantic -Werror -Isrc test/host/stl_allocator_no_exceptions_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/stl-allocator-no-exceptions-contract-test
           ./build/stl-allocator-no-exceptions-contract-test
 
+      - name: Compile and run buffer contract
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Isrc test/host/buffer_contract_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformGeneric.cpp src/strata/internal/PlatformEsp32.cpp -o build/buffer-contract-test
+          ./build/buffer-contract-test
+
       - name: Compile and run ESP32 allocation backend contract
         run: |
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itest/host/fakes -Isrc test/host/esp32_allocation_backend_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp -o build/esp32-allocation-backend-test
@@ -80,6 +85,11 @@ jobs:
         run: |
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itest/host/fakes -Isrc test/host/esp32_diagnostics_backend_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp -o build/esp32-diagnostics-backend-test
           ./build/esp32-diagnostics-backend-test
+
+      - name: Compile and run ESP32 buffer backend contract
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itest/host/fakes -Isrc test/host/esp32_buffer_backend_test.cpp src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp -o build/esp32-buffer-backend-test
+          ./build/esp32-buffer-backend-test
 
   build-example:
     runs-on: ubuntu-latest
@@ -127,3 +137,6 @@ jobs:
 
       - name: Build STL example
         run: pio ci examples/STL --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"
+
+      - name: Build Buffer example
+        run: pio ci examples/Buffer --board ${{ matrix.board }} --lib="." --project-option "platform=${PIOARDUINO_PLATFORM_URL}" --project-option "build_unflags=-std=gnu++11" --project-option "build_flags=-std=gnu++20"

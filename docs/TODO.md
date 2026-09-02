@@ -36,14 +36,14 @@ This document is the implementation checklist for Strata itself and the later Ze
 
 ## Phase 3 — Region introspection and diagnostics
 
-- [ ] Add `regionOf(ptr)`.
-- [ ] Add `supports(Placement)` and `supports(Region)` queries.
-- [ ] Add `MemoryStats` with total, free, minimum-free, and largest-free-block values.
-- [ ] Represent unavailable statistics explicitly rather than with ambiguous zeros.
-- [ ] Implement ESP32 internal heap diagnostics.
-- [ ] Implement ESP32 external heap diagnostics.
-- [ ] Add tests for foreign pointers and unknown regions.
-- [ ] Add diagnostics documentation and example.
+- [x] Add `regionOf(ptr)`.
+- [x] Add `supports(Placement)` and `supports(Region)` queries.
+- [x] Add `MemoryStats` with total, free, minimum-free, and largest-free-block values.
+- [x] Represent unavailable statistics explicitly rather than with ambiguous zeros.
+- [x] Implement ESP32 internal heap diagnostics.
+- [x] Implement ESP32 external heap diagnostics.
+- [x] Add tests for foreign pointers and unknown regions.
+- [x] Add diagnostics documentation and example.
 
 ## Phase 4 — Typed objects and RAII primitives
 

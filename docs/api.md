@@ -19,8 +19,11 @@ Optional integrations are intentionally separate:
 
 - `Strata::Placement` — requested allocation policy.
 - `Strata::Region` — observed memory region.
+- `Strata::validPlacement(...)` — validate a placement value before persisting/decoding or using it in a request.
 - `Strata::supports(...)` — placement, region, and capability support queries.
 - `Strata::regionOf(ptr)` — inspect the region of a pointer when the platform can identify it.
+
+Allocation/support APIs reject invalid `Placement` enum values instead of interpreting them as another policy.
 
 See `placement.md` for the stable fallback, reallocation, capability-interaction, and safety semantics.
 
@@ -89,7 +92,9 @@ See `pmr.md` for placement, lifetime, exception, and portability details.
 
 `Strata::FreeRTOS::TaskStack` owns explicitly placed stack storage.
 
-`Strata::FreeRTOS::Task` owns the task handle, internal static control block, and stack storage. Task stack sizes and high-water marks are exposed in bytes.
+`Strata::FreeRTOS::Task` owns the task handle, internal static control block, and stack storage. Task stack sizes and high-water marks are exposed in bytes. The task integration requires static allocation, task deletion, and stack high-water-mark support to be enabled in FreeRTOS.
+
+A `Task` owner must be reset or destroyed from a different task context than the task it owns. Managed tasks must not self-delete because the owner must return from `vTaskDelete(handle)` before it can release the caller-owned static stack and control block.
 
 This API is intentionally low-level. Worker remains the ZekStack orchestration layer for jobs, retries, cancellation, pools, and task lifecycle policy.
 
@@ -116,16 +121,4 @@ See `arduinojson.md` for placement, failure, lifetime, and PSRAM details.
 
 ## Stable API boundary
 
-Phase 12 established the core API as the stable base for ecosystem migrations. The completed `v0.1.0` implementation roadmap adds advanced diagnostics without weakening that boundary.
-
-The following semantic contracts are intentionally protected by tests and CI:
-
-- placement and observed region remain distinct;
-- required placement/capability constraints never silently weaken;
-- ordinary core APIs remain usable with exceptions disabled;
-- allocation failure does not use abort/terminate as normal control flow;
-- optional integrations are not pulled into `Strata.h`;
-- platform-specific allocator flags do not become part of the core public vocabulary;
-- advanced diagnostics remain optional and do not require an allocation registry.
-
-See `architecture.md` for the layering contract and `migration.md` for ecosystem adoption recipes.
+Phase 12 established the core API as the stable base for ecosystem migrations. The completed `v0.1.0` implementation roadmap adds advanced diagnostics and release hardening without weakening that boundary.

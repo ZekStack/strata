@@ -90,6 +90,9 @@ jobs:
           g++ $common_flags -Itests/host/freertos_fakes tests/host/freertos_task_contract_test.cpp $common_sources -o build/freertos-task-contract-test
           ./build/freertos-task-contract-test
 
+          g++ $common_flags -Itests/host/freertos_fakes tests/host/freertos_queue_contract_test.cpp $common_sources -o build/freertos-queue-contract-test
+          ./build/freertos-queue-contract-test
+
       - name: Build and run ESP32 backend contracts
         run: |
           set -e
@@ -111,6 +114,9 @@ jobs:
 
           g++ $flags -Itests/host/freertos_fakes tests/host/esp32_freertos_task_backend_test.cpp $sources -o build/esp32-freertos-task-backend-test
           ./build/esp32-freertos-task-backend-test
+
+          g++ $flags -Itests/host/freertos_fakes tests/host/esp32_freertos_queue_backend_test.cpp $sources -o build/esp32-freertos-queue-backend-test
+          ./build/esp32-freertos-queue-backend-test
 
   build-examples:
     runs-on: ubuntu-latest

@@ -6,10 +6,11 @@ The primary core include is:
 #include <Strata.h>
 ```
 
-Optional FreeRTOS integration is intentionally separate:
+Optional FreeRTOS integrations are intentionally separate:
 
 ```cpp
 #include <strata/freertos/Task.h>
+#include <strata/freertos/Queue.h>
 ```
 
 ## Placement and regions
@@ -58,5 +59,13 @@ The typed helpers cover raw typed arrays, placement construction/destruction, un
 `Strata::FreeRTOS::Task` owns the task handle, internal static control block, and stack storage. Task stack sizes and high-water marks are exposed in bytes.
 
 This API is intentionally low-level. Worker remains the ZekStack orchestration layer for jobs, retries, cancellation, pools, and task lifecycle policy.
+
+## FreeRTOS queues
+
+`Strata::FreeRTOS::Queue<T>` is a move-only typed wrapper around `xQueueCreateStatic()`. Queue item storage follows `QueueConfig::storagePlacement` for task-only queues, while the `StaticQueue_t` control block remains internal.
+
+`QueueUsage::IsrAccessible` requires internal item storage. `sendFromISR()` and `receiveFromISR()` reject task-only queues, and ISR-capable queues configured with external/default storage fail during creation. The underlying `QueueHandle_t` remains available through `handle()` for infrastructure users.
+
+See `freertos-queues.md` for lifecycle and ISR safety details.
 
 See the specialized documents for exact semantics and safety boundaries.

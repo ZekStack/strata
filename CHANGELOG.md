@@ -2,6 +2,14 @@
 
 All notable changes to Strata are documented in this file.
 
+## 0.1.2
+
+- Add move-only `Strata::FreeRTOS::BinarySemaphore` ownership using static FreeRTOS creation and internal Strata-backed control storage.
+- Add task and ISR-safe take/give operations with explicit failure reporting and initially-empty semaphore semantics.
+- Add host and ESP32 backend contracts covering lifecycle, ISR behavior, creation failure, allocation failure, and internal-only control storage.
+- Extend the FreeRTOS source audit to prevent dynamic binary-semaphore creation and add ESP32/ESP32-S3/ESP32-C3/ESP32-P4 example coverage.
+- Document the binary semaphore API, configuration requirements, example, and `v0.1.2` release contract.
+
 ## 0.1.1
 
 - Add reusable `Strata::MemoryPolicy` with consistent general-allocation and task-stack placement fields for consuming ZekStack library configuration.

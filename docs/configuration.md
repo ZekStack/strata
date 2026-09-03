@@ -84,11 +84,13 @@ Keep the `MemoryResource` object alive for at least as long as every PMR contain
 
 ## FreeRTOS integration
 
-FreeRTOS support is opt-in through `<strata/freertos/Task.h>`, `<strata/freertos/Queue.h>`, and `<strata/freertos/Mutex.h>` and requires static allocation support.
+FreeRTOS support is opt-in through `<strata/freertos/Task.h>`, `<strata/freertos/Queue.h>`, `<strata/freertos/Mutex.h>`, and `<strata/freertos/BinarySemaphore.h>` and requires static allocation support.
 
 The task integration additionally requires `INCLUDE_vTaskDelete == 1` and `INCLUDE_uxTaskGetStackHighWaterMark == 1`. `Task.h` checks these settings at compile time so a FreeRTOS configuration that cannot satisfy the public task API fails with an actionable error instead of failing later on missing symbols.
 
 The mutex integration additionally requires `configUSE_MUTEXES == 1` and `configUSE_RECURSIVE_MUTEXES == 1`. Mutex control storage is always internal and is allocated through Strata before using FreeRTOS static creation APIs.
+
+The binary-semaphore integration only adds the static-allocation requirement. Its `StaticSemaphore_t` control storage is always internal, newly created semaphores start empty, and the wrapper provides both task-context and ISR take/give operations. There is intentionally no placement configuration for semaphore control storage.
 
 `TaskConfig` configures task name, stack bytes, stack placement, priority, and affinity. Use internal stack placement for tasks that may execute while flash/cache is disabled.
 

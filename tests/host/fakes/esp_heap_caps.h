@@ -13,6 +13,7 @@ inline constexpr std::uint32_t MALLOC_CAP_DMA = 1U << 3;
 inline constexpr std::uint32_t MALLOC_CAP_EXEC = 1U << 4;
 
 inline bool fake_heap_caps_fail_external = false;
+inline bool fake_heap_caps_fail_internal = false;
 inline std::uint32_t fake_heap_caps_last_caps = 0;
 inline std::size_t fake_heap_caps_external_attempts = 0;
 inline std::size_t fake_heap_caps_internal_attempts = 0;
@@ -29,6 +30,7 @@ inline std::unordered_map<const void *, std::uint32_t> fake_heap_caps_allocation
 
 inline void fake_heap_caps_reset() {
     fake_heap_caps_fail_external = false;
+    fake_heap_caps_fail_internal = false;
     fake_heap_caps_last_caps = 0;
     fake_heap_caps_external_attempts = 0;
     fake_heap_caps_internal_attempts = 0;
@@ -69,6 +71,9 @@ inline bool fake_heap_caps_should_fail(std::uint32_t caps) {
     }
     if ((caps & MALLOC_CAP_INTERNAL) != 0) {
         ++fake_heap_caps_internal_attempts;
+        if (fake_heap_caps_fail_internal) {
+            return true;
+        }
     }
     return fake_heap_caps_incompatible(caps);
 }

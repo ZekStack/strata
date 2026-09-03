@@ -15,15 +15,16 @@ Before tagging a release:
 
 `scripts/validate_release_version.py` enforces the metadata/version/changelog requirements in CI. Repository visibility is an organization/repository setting and must be checked separately.
 
-## Create v0.1.1
+## Create a release
 
-Tag the validated `main` commit and push the tag:
+Derive the intended release version from the validated PlatformIO metadata, tag the validated `main` commit, and push the tag:
 
 ```bash
 git checkout main
 git pull --ff-only
-git tag v0.1.1
-git push origin v0.1.1
+VERSION="$(python3 -c 'import json; print(json.load(open("library.json"))["version"])')"
+git tag "v${VERSION}"
+git push origin "v${VERSION}"
 ```
 
 The `CI` workflow runs again for the tag. The release job waits for metadata validation, source audits, host contracts, ESP32 backend contracts, and the full ESP32/ESP32-S3/ESP32-C3/ESP32-P4 example matrix.

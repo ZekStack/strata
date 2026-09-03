@@ -18,14 +18,14 @@ env:
 
 jobs:
   metadata:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, zekstack-ci]
     steps:
       - uses: actions/checkout@v4
       - name: Validate release metadata
         run: python3 scripts/validate_release_version.py
 
   source-audit:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, zekstack-ci]
     steps:
       - uses: actions/checkout@v4
 
@@ -67,7 +67,7 @@ jobs:
           fi
 
   host-tests:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, zekstack-ci]
     needs: source-audit
     steps:
       - uses: actions/checkout@v4
@@ -173,7 +173,7 @@ jobs:
           ./build/esp32-pmr-memory-resource-backend-test
 
   build-examples:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, zekstack-ci]
     needs: [source-audit, host-tests]
     strategy:
       fail-fast: false
@@ -237,7 +237,7 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [metadata, source-audit, host-tests, build-examples]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, zekstack-ci]
     permissions:
       contents: write
     steps:

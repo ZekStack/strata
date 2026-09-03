@@ -12,6 +12,7 @@ Optional integrations are intentionally separate:
 #include <strata/freertos/Task.h>
 #include <strata/freertos/Queue.h>
 #include <strata/freertos/Mutex.h>
+#include <strata/freertos/BinarySemaphore.h>
 #include <strata/arduinojson/Allocator.h>
 #include <strata/pmr/MemoryResource.h>
 ```
@@ -126,6 +127,14 @@ See `freertos-queues.md` for lifecycle and ISR safety details.
 
 Both wrappers expose `lock()`, `tryLock()`, `unlock()`, `reset()`, `handle()`, `controlPlacement()`, and `controlRegion()`. See `freertos-mutexes.md` for compile-time requirements and ownership semantics.
 
+## FreeRTOS binary semaphores
+
+`Strata::FreeRTOS::BinarySemaphore` is a move-only owner created through `xSemaphoreCreateBinaryStatic()`. Its `StaticSemaphore_t` control storage is always allocated through Strata with `Placement::Internal` and a newly created semaphore starts empty.
+
+The task-context API exposes `take()`, `tryTake()`, and `give()`. `giveFromISR()` and `takeFromISR()` forward the optional `higherPriorityTaskWoken` pointer to FreeRTOS. Give/take operations return `bool` so an already-given semaphore or unavailable take is not silently hidden.
+
+See `freertos-binary-semaphores.md` for signaling semantics, ISR usage, and ownership details.
+
 ## ArduinoJson
 
 `Strata::ArduinoJson::Allocator` implements the ArduinoJson 7 custom allocator interface and forwards allocation, reallocation, and deallocation through a single Strata `Placement` policy.
@@ -141,7 +150,7 @@ See `arduinojson.md` for placement, failure, lifetime, and PSRAM details.
 
 ## Stable API boundary
 
-The core API remains the stable base for ecosystem migrations. `v0.1.1` adds the shared `MemoryPolicy` vocabulary and FreeRTOS mutex ownership without weakening the `v0.1.0` placement/failure contracts.
+The core API remains the stable base for ecosystem migrations. `v0.1.2` adds FreeRTOS binary semaphore ownership without weakening the placement, failure, or memory-policy contracts established by earlier releases.
 
 The following semantic contracts are intentionally protected by tests and CI:
 
@@ -153,6 +162,6 @@ The following semantic contracts are intentionally protected by tests and CI:
 - optional integrations are not pulled into `Strata.h`;
 - platform-specific allocator flags do not become part of the core public vocabulary;
 - advanced diagnostics remain optional and do not require an allocation registry;
-- FreeRTOS mutex wrappers use static creation and internal Strata-backed control storage.
+- FreeRTOS mutex and binary-semaphore wrappers use static creation and internal Strata-backed control storage.
 
 See `architecture.md` for the layering contract and `migration.md` for ecosystem adoption recipes.

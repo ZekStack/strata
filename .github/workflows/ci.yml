@@ -136,7 +136,7 @@ jobs:
         run: |
           set -e
           mkdir -p build
-          flags="-std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP32 -Itests/host/fakes -Isrc"
+          flags="-std=c++20 -Wall -Wextra -Wpedantic -Werror -DESP_PLATFORM -Itests/host/fakes -Isrc"
           sources="src/strata/Allocation.cpp src/strata/Diagnostics.cpp src/strata/internal/PlatformEsp32.cpp"
 
           g++ $flags tests/host/esp32_allocation_backend_test.cpp $sources -o build/esp32-allocation-backend-test
@@ -211,6 +211,7 @@ jobs:
               --board "${{ matrix.board }}" \
               --lib="." \
               --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \
+              --project-option "framework=arduino" \
               --project-option "lib_deps=bblanchon/ArduinoJson@7.4.3" \
               --project-option "build_unflags=-std=gnu++11" \
               --project-option "build_flags=-std=gnu++20"
@@ -221,6 +222,7 @@ jobs:
             --board "${{ matrix.board }}" \
             --lib="." \
             --project-option "platform=${PIOARDUINO_PLATFORM_URL}" \
+            --project-option "framework=arduino" \
             --project-option "lib_deps=bblanchon/ArduinoJson@7.4.3" \
             --project-option "build_unflags=-std=gnu++11" \
             --project-option "build_flags=-std=gnu++20 -DSTRATA_ENABLE_ADVANCED_DIAGNOSTICS=1"

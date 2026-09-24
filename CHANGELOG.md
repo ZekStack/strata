@@ -2,6 +2,11 @@
 
 All notable changes to Strata are documented in this file.
 
+## 0.1.3
+
+- Detect ESP32 targets through either the Arduino `ESP32` macro or ESP-IDF `ESP_PLATFORM`, so Arduino-as-component and ESP32-P4 builds select the ESP32 allocation backend instead of the generic host backend.
+- Exercise the ESP32 backend contract with ESP-IDF-style platform detection and make the PIOArduino example matrix explicitly select the Arduino framework.
+
 ## 0.1.2
 
 - Add move-only `Strata::FreeRTOS::BinarySemaphore` ownership using static FreeRTOS creation and internal Strata-backed control storage.

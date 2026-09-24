@@ -61,7 +61,7 @@ namespace Detail {
         return false;
     }
 
-#if defined(ESP32)
+#if defined(ESP32) || defined(ESP_PLATFORM)
     depth = static_cast<configSTACK_DEPTH_TYPE>(roundedBytes);
 #else
     depth = static_cast<configSTACK_DEPTH_TYPE>(units);
@@ -70,7 +70,7 @@ namespace Detail {
 }
 
 [[nodiscard]] constexpr std::size_t highWaterMarkBytes(UBaseType_t value) noexcept {
-#if defined(ESP32)
+#if defined(ESP32) || defined(ESP_PLATFORM)
     return static_cast<std::size_t>(value);
 #else
     return static_cast<std::size_t>(value) * sizeof(StackType_t);
@@ -246,7 +246,7 @@ private:
             return false;
         }
 
-#if defined(ESP32)
+#if defined(ESP32) || defined(ESP_PLATFORM)
         handle_ = xTaskCreateStaticPinnedToCore(
             function,
             config.name,

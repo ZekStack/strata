@@ -279,7 +279,7 @@ ready.give();
 | Optional ArduinoJson integration | ArduinoJson 7; CI compatibility target 7.4.3 |
 | Advanced diagnostics | Optional compile-time counters; disabled by default |
 | Exceptions | Not required by core APIs; STL/PMR standard allocator surfaces follow standard semantics |
-| Status | `v0.1.2` binary semaphore compatibility release |
+| Status | `v0.1.3` ESP-IDF/ESP32-P4 platform-detection compatibility release |
 
 ## License
 
@@ -287,4 +287,4 @@ MIT — see [`LICENSE.md`](LICENSE.md).
 
 ## ZekStack
 
-Part of the ZekStack library stack. `v0.1.2` adds static FreeRTOS binary semaphore ownership while preserving the shared memory-policy and placement contracts established for Worker and subsequent ZekStack libraries.
+Part of the ZekStack library stack. `v0.1.3` fixes ESP-IDF-style ESP32 platform detection, including ESP32-P4 and Arduino-as-component builds, while preserving the `v0.1.2` memory-policy and FreeRTOS contracts.

@@ -1,6 +1,6 @@
 #include "Platform.h"
 
-#if defined(ESP32)
+#if defined(ESP32) || defined(ESP_PLATFORM)
 
 #include <esp_heap_caps.h>
 #include <esp_memory_utils.h>

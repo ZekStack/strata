@@ -1,6 +1,6 @@
 #include "Platform.h"
 
-#if !defined(ESP32)
+#if !defined(ESP32) && !defined(ESP_PLATFORM)
 
 #if defined(_MSC_VER)
 #error "Strata v0.1.0 generic backend is not supported with MSVC; use a GCC/Clang C++20 toolchain"

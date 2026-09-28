@@ -23,7 +23,6 @@ using SemaphoreHandle_t = StaticSemaphore_t *;
 inline std::size_t fake_semaphore_mutex_create_calls = 0;
 inline std::size_t fake_semaphore_recursive_create_calls = 0;
 inline std::size_t fake_semaphore_binary_create_calls = 0;
-	fake_semaphore_counting_create_calls = 0;
 inline std::size_t fake_semaphore_counting_create_calls = 0;
 inline std::size_t fake_semaphore_delete_calls = 0;
 inline std::size_t fake_semaphore_take_calls = 0;
@@ -39,6 +38,7 @@ inline void fake_semaphore_reset() {
 	fake_semaphore_mutex_create_calls = 0;
 	fake_semaphore_recursive_create_calls = 0;
 	fake_semaphore_binary_create_calls = 0;
+	fake_semaphore_counting_create_calls = 0;
 	fake_semaphore_delete_calls = 0;
 	fake_semaphore_take_calls = 0;
 	fake_semaphore_give_calls = 0;

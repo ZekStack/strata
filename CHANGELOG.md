@@ -2,6 +2,13 @@
 
 All notable changes to Strata are documented in this file.
 
+## 0.1.4
+
+- Add move-only `Strata::FreeRTOS::CountingSemaphore` ownership using `xSemaphoreCreateCountingStatic()` and internal Strata-backed control storage.
+- Expose task and ISR take/give operations, saturation/exhaustion failure reporting, and maximum-count diagnostics.
+- Add host and ESP32 backend contracts and extend the FreeRTOS source audit to reject dynamic counting-semaphore creation.
+- Document counting-semaphore ownership and configuration for consuming libraries such as Signal.
+
 ## 0.1.3
 
 - Detect ESP32 targets through either the Arduino `ESP32` macro or ESP-IDF `ESP_PLATFORM`, so Arduino-as-component and ESP32-P4 builds select the ESP32 allocation backend instead of the generic host backend.

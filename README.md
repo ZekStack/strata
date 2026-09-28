@@ -19,7 +19,7 @@ It gives applications and libraries one vocabulary for allocation intent while p
 - **PMR integration** — use the same placement policies through standard polymorphic allocators and nested PMR containers.
 - **Runtime diagnostics** — inspect actual memory regions, heap statistics, and current/peak region usage.
 - **Optional advanced diagnostics** — opt into allocation/failure/fallback counters without a global allocation registry.
-- **Optional FreeRTOS memory primitives** — explicitly place task stacks and queue item storage, and own static mutex/binary-semaphore control blocks, while keeping FreeRTOS out of the core headers.
+- **Optional FreeRTOS memory primitives** — explicitly place task stacks and queue item storage, and own static mutex/binary/counting-semaphore control blocks, while keeping FreeRTOS out of the core headers.
 - **Optional ArduinoJson allocation** — route ArduinoJson 7 document memory through the same Strata placement policies.
 - **Standalone core** — Strata does not depend on other ZekStack libraries.
 
@@ -118,11 +118,11 @@ config.memory.taskStack = Strata::Placement::Internal;
 - `Strata::Allocator<T>` follows standard allocator expectations and throws `std::bad_alloc` when exceptions are enabled.
 - The optional PMR adapter requires standard-library `<memory_resource>` support and exceptions to preserve `std::pmr::memory_resource` failure semantics.
 - External RAM is not automatically safe for DMA, ISR use, or cache-disabled flash windows.
-- FreeRTOS task, queue, mutex, and binary-semaphore integrations are opt-in and require static allocation support. The task wrapper also requires `INCLUDE_vTaskDelete == 1` and `INCLUDE_uxTaskGetStackHighWaterMark == 1`; the mutex wrapper requires mutex and recursive-mutex support.
+- FreeRTOS task, queue, mutex, binary-semaphore, and counting-semaphore integrations are opt-in and require static allocation support. The task wrapper also requires `INCLUDE_vTaskDelete == 1` and `INCLUDE_uxTaskGetStackHighWaterMark == 1`; the mutex wrapper requires mutex and recursive-mutex support.
 - A `Strata::FreeRTOS::Task` owner must be destroyed/reset from a different task context than the task it owns; managed tasks must not self-delete.
 - Tasks that can execute while flash/cache is disabled should keep their stacks in internal memory.
 - ISR-accessible Strata queues require internal item storage; external queue storage is task-only.
-- Strata mutex and binary-semaphore control blocks are always internal and use FreeRTOS static creation APIs.
+- Strata mutex, binary-semaphore, and counting-semaphore control blocks are always internal and use FreeRTOS static creation APIs.
 - `BinarySemaphore::create()` produces an initially-empty semaphore; task and ISR give/take operations report success explicitly.
 - ArduinoJson integration is opt-in, targets ArduinoJson 7, and requires the Strata allocator object to outlive the `JsonDocument` using it.
 - Advanced allocation counters are disabled by default; enable them build-wide with `STRATA_ENABLE_ADVANCED_DIAGNOSTICS=1`.
@@ -143,6 +143,7 @@ config.memory.taskStack = Strata::Placement::Internal;
 | `FreeRTOSQueue` | Optional typed FreeRTOS queues with placed item storage. |
 | `FreeRTOSMutex` | Optional static mutex and recursive-mutex ownership. |
 | `FreeRTOSBinarySemaphore` | Optional static binary semaphore signaling with task and ISR APIs. |
+| `FreeRTOSCountingSemaphore` | Optional static counting semaphore ownership for bounded resource accounting. |
 | `ArduinoJson` | Optional ArduinoJson 7 document allocation through Strata placement. |
 
 Start with:
@@ -174,6 +175,7 @@ examples/Basic
 | [`docs/freertos-queues.md`](docs/freertos-queues.md) | Optional typed queue storage placement and ISR safety. |
 | [`docs/freertos-mutexes.md`](docs/freertos-mutexes.md) | Optional internal static mutex and recursive-mutex ownership. |
 | [`docs/freertos-binary-semaphores.md`](docs/freertos-binary-semaphores.md) | Optional internal static binary semaphore ownership and ISR signaling. |
+| [`docs/freertos-counting-semaphores.md`](docs/freertos-counting-semaphores.md) | Optional internal static counting semaphore ownership and bounded-count signaling. |
 | [`docs/arduinojson.md`](docs/arduinojson.md) | Optional ArduinoJson 7 custom allocator integration. |
 | [`docs/roadmap.md`](docs/roadmap.md) | Completed `v0.1.0` roadmap and post-release planning boundary. |
 | [`docs/ecosystem-adoption.md`](docs/ecosystem-adoption.md) | Planned adoption across ZekStack and Core. |
@@ -243,6 +245,7 @@ Optional FreeRTOS integrations:
 #include <strata/freertos/Queue.h>
 #include <strata/freertos/Mutex.h>
 #include <strata/freertos/BinarySemaphore.h>
+#include <strata/freertos/CountingSemaphore.h>
 
 Strata::FreeRTOS::Task task = Strata::FreeRTOS::Task::create(worker, nullptr, {
     .name = "worker",
@@ -262,6 +265,7 @@ auto mutex = Strata::FreeRTOS::Mutex::create();
 auto recursiveMutex = Strata::FreeRTOS::RecursiveMutex::create();
 auto ready = Strata::FreeRTOS::BinarySemaphore::create();
 ready.give();
+auto slots = Strata::FreeRTOS::CountingSemaphore::create(20, 20);
 ```
 
 ## Compatibility
@@ -275,11 +279,11 @@ ready.give();
 | External memory | ESP32 PSRAM through ESP-IDF heap capabilities |
 | Core dependencies | none |
 | Optional PMR integration | Standard-library `<memory_resource>` with exceptions enabled |
-| Optional FreeRTOS integration | FreeRTOS with static allocation; task deletion/high-water-mark APIs for tasks; mutex and recursive-mutex support for mutex wrappers; binary semaphore task/ISR support |
+| Optional FreeRTOS integration | FreeRTOS with static allocation; task deletion/high-water-mark APIs for tasks; mutex and recursive-mutex support for mutex wrappers; binary/counting semaphore task/ISR support |
 | Optional ArduinoJson integration | ArduinoJson 7; CI compatibility target 7.4.3 |
 | Advanced diagnostics | Optional compile-time counters; disabled by default |
 | Exceptions | Not required by core APIs; STL/PMR standard allocator surfaces follow standard semantics |
-| Status | `v0.1.3` ESP-IDF/ESP32-P4 platform-detection compatibility release |
+| Status | `v0.1.4` counting-semaphore integration release |
 
 ## License
 
@@ -287,4 +291,4 @@ MIT — see [`LICENSE.md`](LICENSE.md).
 
 ## ZekStack
 
-Part of the ZekStack library stack. `v0.1.3` fixes ESP-IDF-style ESP32 platform detection, including ESP32-P4 and Arduino-as-component builds, while preserving the `v0.1.2` memory-policy and FreeRTOS contracts.
+Part of the ZekStack library stack. `v0.1.4` adds static counting-semaphore ownership while preserving the existing memory-policy, placement, and FreeRTOS ownership contracts.

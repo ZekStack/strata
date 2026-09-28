@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -177,6 +177,7 @@ jobs:
     needs: [source-audit, host-tests]
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         board:
           - esp32dev

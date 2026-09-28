@@ -8,11 +8,13 @@ enum class FakeSemaphoreKind {
 	Mutex,
 	RecursiveMutex,
 	Binary,
+	Counting,
 };
 
 struct StaticSemaphore_t {
 	FakeSemaphoreKind kind{FakeSemaphoreKind::Mutex};
 	std::size_t depth{0};
+	std::size_t maxDepth{1};
 	bool deleted{false};
 };
 
@@ -21,6 +23,7 @@ using SemaphoreHandle_t = StaticSemaphore_t *;
 inline std::size_t fake_semaphore_mutex_create_calls = 0;
 inline std::size_t fake_semaphore_recursive_create_calls = 0;
 inline std::size_t fake_semaphore_binary_create_calls = 0;
+inline std::size_t fake_semaphore_counting_create_calls = 0;
 inline std::size_t fake_semaphore_delete_calls = 0;
 inline std::size_t fake_semaphore_take_calls = 0;
 inline std::size_t fake_semaphore_give_calls = 0;
@@ -35,6 +38,7 @@ inline void fake_semaphore_reset() {
 	fake_semaphore_mutex_create_calls = 0;
 	fake_semaphore_recursive_create_calls = 0;
 	fake_semaphore_binary_create_calls = 0;
+	fake_semaphore_counting_create_calls = 0;
 	fake_semaphore_delete_calls = 0;
 	fake_semaphore_take_calls = 0;
 	fake_semaphore_give_calls = 0;
@@ -75,6 +79,23 @@ inline SemaphoreHandle_t xSemaphoreCreateBinaryStatic(StaticSemaphore_t *control
 	}
 	controlBlock->kind = FakeSemaphoreKind::Binary;
 	controlBlock->depth = 0;
+	controlBlock->maxDepth = 1;
+	controlBlock->deleted = false;
+	return controlBlock;
+}
+
+inline SemaphoreHandle_t xSemaphoreCreateCountingStatic(
+	UBaseType_t maxCount,
+	UBaseType_t initialCount,
+	StaticSemaphore_t *controlBlock
+) {
+	++fake_semaphore_counting_create_calls;
+	if (controlBlock == nullptr || fake_semaphore_fail_create || maxCount == 0 || initialCount > maxCount) {
+		return nullptr;
+	}
+	controlBlock->kind = FakeSemaphoreKind::Counting;
+	controlBlock->depth = initialCount;
+	controlBlock->maxDepth = maxCount;
 	controlBlock->deleted = false;
 	return controlBlock;
 }
@@ -102,7 +123,7 @@ inline BaseType_t xSemaphoreTake(SemaphoreHandle_t handle, TickType_t ticksToWai
 	if (handle->depth == 0) {
 		return pdFALSE;
 	}
-	handle->depth = 0;
+	--handle->depth;
 	return pdTRUE;
 }
 
@@ -118,10 +139,10 @@ inline BaseType_t xSemaphoreGive(SemaphoreHandle_t handle) {
 		handle->depth = 0;
 		return pdTRUE;
 	}
-	if (handle->depth != 0) {
+	if (handle->depth >= handle->maxDepth) {
 		return pdFALSE;
 	}
-	handle->depth = 1;
+	++handle->depth;
 	return pdTRUE;
 }
 
@@ -129,11 +150,11 @@ inline BaseType_t xSemaphoreTakeFromISR(
 	SemaphoreHandle_t handle,
 	BaseType_t *higherPriorityTaskWoken) {
 	++fake_semaphore_take_from_isr_calls;
-	if (handle == nullptr || handle->deleted || handle->kind != FakeSemaphoreKind::Binary ||
+	if (handle == nullptr || handle->deleted || (handle->kind != FakeSemaphoreKind::Binary && handle->kind != FakeSemaphoreKind::Counting) ||
 		handle->depth == 0) {
 		return pdFALSE;
 	}
-	handle->depth = 0;
+	--handle->depth;
 	if (higherPriorityTaskWoken != nullptr) {
 		*higherPriorityTaskWoken = pdTRUE;
 	}
@@ -144,11 +165,11 @@ inline BaseType_t xSemaphoreGiveFromISR(
 	SemaphoreHandle_t handle,
 	BaseType_t *higherPriorityTaskWoken) {
 	++fake_semaphore_give_from_isr_calls;
-	if (handle == nullptr || handle->deleted || handle->kind != FakeSemaphoreKind::Binary ||
-		handle->depth != 0) {
+	if (handle == nullptr || handle->deleted || (handle->kind != FakeSemaphoreKind::Binary && handle->kind != FakeSemaphoreKind::Counting) ||
+		handle->depth >= handle->maxDepth) {
 		return pdFALSE;
 	}
-	handle->depth = 1;
+	++handle->depth;
 	if (higherPriorityTaskWoken != nullptr) {
 		*higherPriorityTaskWoken = pdTRUE;
 	}

@@ -13,6 +13,7 @@ Optional integrations are intentionally separate:
 #include <strata/freertos/Queue.h>
 #include <strata/freertos/Mutex.h>
 #include <strata/freertos/BinarySemaphore.h>
+#include <strata/freertos/CountingSemaphore.h>
 #include <strata/arduinojson/Allocator.h>
 #include <strata/pmr/MemoryResource.h>
 ```
@@ -135,6 +136,12 @@ The task-context API exposes `take()`, `tryTake()`, and `give()`. `giveFromISR()
 
 See `freertos-binary-semaphores.md` for signaling semantics, ISR usage, and ownership details.
 
+## FreeRTOS counting semaphores
+
+`Strata::FreeRTOS::CountingSemaphore` is a move-only owner created through `xSemaphoreCreateCountingStatic()`. Its `StaticSemaphore_t` control storage is always internal and Strata-backed. `create(maxCount, initialCount)` validates the bounds, task-context and ISR take/give operations return `bool`, and `maxCount()` reports the configured limit.
+
+See `freertos-counting-semaphores.md` for lifecycle and synchronization semantics.
+
 ## ArduinoJson
 
 `Strata::ArduinoJson::Allocator` implements the ArduinoJson 7 custom allocator interface and forwards allocation, reallocation, and deallocation through a single Strata `Placement` policy.
@@ -162,6 +169,6 @@ The following semantic contracts are intentionally protected by tests and CI:
 - optional integrations are not pulled into `Strata.h`;
 - platform-specific allocator flags do not become part of the core public vocabulary;
 - advanced diagnostics remain optional and do not require an allocation registry;
-- FreeRTOS mutex and binary-semaphore wrappers use static creation and internal Strata-backed control storage.
+- FreeRTOS mutex, binary-semaphore, and counting-semaphore wrappers use static creation and internal Strata-backed control storage.
 
 See `architecture.md` for the layering contract and `migration.md` for ecosystem adoption recipes.

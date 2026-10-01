@@ -283,7 +283,7 @@ auto slots = Strata::FreeRTOS::CountingSemaphore::create(20, 20);
 | Optional ArduinoJson integration | ArduinoJson 7; CI compatibility target 7.4.3 |
 | Advanced diagnostics | Optional compile-time counters; disabled by default |
 | Exceptions | Not required by core APIs; STL/PMR standard allocator surfaces follow standard semantics |
-| Status | `v0.1.4` counting-semaphore integration release |
+| Status | `v0.1.3` counting-semaphore integration release |
 
 ## License
 
@@ -291,4 +291,4 @@ MIT — see [`LICENSE.md`](LICENSE.md).
 
 ## ZekStack
 
-Part of the ZekStack library stack. `v0.1.4` adds static counting-semaphore ownership while preserving the existing memory-policy, placement, and FreeRTOS ownership contracts.
+Part of the ZekStack library stack. `v0.1.3` adds static counting-semaphore ownership while preserving the existing memory-policy, placement, and FreeRTOS ownership contracts.

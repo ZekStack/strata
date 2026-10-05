@@ -86,7 +86,7 @@ Keep the `MemoryResource` object alive for at least as long as every PMR contain
 
 FreeRTOS support is opt-in through `<strata/freertos/Task.h>`, `<strata/freertos/Queue.h>`, `<strata/freertos/Mutex.h>`, and `<strata/freertos/BinarySemaphore.h>`, and `<strata/freertos/CountingSemaphore.h>` and requires static allocation support.
 
-The task integration additionally requires `INCLUDE_vTaskDelete == 1` and `INCLUDE_uxTaskGetStackHighWaterMark == 1`. `Task.h` checks these settings at compile time so a FreeRTOS configuration that cannot satisfy the public task API fails with an actionable error instead of failing later on missing symbols.
+The task integration additionally requires `INCLUDE_vTaskDelete == 1` and `INCLUDE_uxTaskGetStackHighWaterMark == 1`. On ESP32 it also requires `INCLUDE_vTaskSuspend == 1`, so task storage can be released only after the task has stopped running on every core. `Task.h` checks these settings at compile time so a FreeRTOS configuration that cannot satisfy the public task API fails with an actionable error instead of failing later on missing symbols.
 
 The mutex integration additionally requires `configUSE_MUTEXES == 1` and `configUSE_RECURSIVE_MUTEXES == 1`. Mutex control storage is always internal and is allocated through Strata before using FreeRTOS static creation APIs.
 

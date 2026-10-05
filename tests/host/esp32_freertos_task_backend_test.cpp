@@ -28,7 +28,13 @@ int main() {
     assert(fake_task_last_stack_depth == 2048);
     assert(fake_task_last_affinity == 0);
     assert(internal.stackHighWaterMarkBytes() == 64);
+    fake_task_running_core = 1;
+    fake_task_running_yields = 2;
     internal.reset();
+    assert(fake_task_suspend_calls == 1);
+    assert(fake_task_yield_calls == 2);
+    assert(fake_task_delete_calls == 1);
+    assert(!fake_task_deleted_while_running);
 
     fake_heap_caps_reset();
     fake_task_reset();

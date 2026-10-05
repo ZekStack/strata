@@ -10,6 +10,8 @@ The task integration requires:
 - `INCLUDE_vTaskDelete == 1`;
 - `INCLUDE_uxTaskGetStackHighWaterMark == 1`.
 
+ESP32 builds also require `INCLUDE_vTaskSuspend == 1`.
+
 `Task.h` checks these settings at compile time and reports an actionable error when the active FreeRTOS configuration cannot satisfy the public task API.
 
 ## Task stacks
@@ -36,7 +38,7 @@ The requested byte count is rounded up to a whole `StackType_t` for storage. `si
 
 ## Lifetime boundary
 
-`Task` is move-only and owns the task handle, static control block, and stack memory. `reset()`/destruction calls `vTaskDelete(handle)` before releasing those buffers.
+`Task` is move-only and owns the task handle, static control block, and stack memory. On ESP32, `reset()`/destruction first suspends the task and waits until it is no longer running on any core, then calls `vTaskDelete(handle)` before releasing those buffers. This prevents FreeRTOS idle cleanup from retaining a pointer to storage that Strata has freed.
 
 The owner must therefore be reset or destroyed from a different task context than the task it owns. If the managed task deletes itself, control cannot return through the owner cleanup path to release the caller-owned static stack and `StaticTask_t` safely. A task managed by this wrapper must not independently self-delete with `vTaskDelete(nullptr)` either; ownership must remain with the `Task` object until another task destroys or resets it.
 

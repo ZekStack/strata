@@ -31,5 +31,7 @@ struct StaticQueue_t {
 #define configUSE_MUTEXES 1
 #define configUSE_RECURSIVE_MUTEXES 1
 #define INCLUDE_vTaskDelete 1
+#define INCLUDE_vTaskSuspend 1
 #define INCLUDE_uxTaskGetStackHighWaterMark 1
+#define configNUMBER_OF_CORES 2
 #define tskIDLE_PRIORITY 0U

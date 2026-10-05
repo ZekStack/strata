@@ -11,6 +11,9 @@
 extern "C" {
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#if defined(ESP32) || defined(ESP_PLATFORM)
+#include <freertos/idf_additions.h>
+#endif
 }
 
 #if configSUPPORT_STATIC_ALLOCATION != 1
@@ -23,6 +26,10 @@ extern "C" {
 
 #if !defined(INCLUDE_uxTaskGetStackHighWaterMark) || INCLUDE_uxTaskGetStackHighWaterMark != 1
 #error "Strata FreeRTOS task integration requires INCLUDE_uxTaskGetStackHighWaterMark == 1"
+#endif
+
+#if (defined(ESP32) || defined(ESP_PLATFORM)) && (!defined(INCLUDE_vTaskSuspend) || INCLUDE_vTaskSuspend != 1)
+#error "Strata FreeRTOS task integration on ESP32 requires INCLUDE_vTaskSuspend == 1"
 #endif
 
 namespace Strata::FreeRTOS {
@@ -204,6 +211,24 @@ public:
     // static stack and control-block storage safely.
     void reset() noexcept {
         if (handle_ != nullptr) {
+#if defined(ESP32) || defined(ESP_PLATFORM)
+            // ESP-IDF defers deletion of a task still running on either core.
+            // Keep its caller-owned stack and TCB alive until deletion is synchronous.
+            vTaskSuspend(handle_);
+            for (;;) {
+                bool running = false;
+                for (BaseType_t core = 0; core < configNUMBER_OF_CORES; ++core) {
+                    if (xTaskGetCurrentTaskHandleForCore(core) == handle_) {
+                        running = true;
+                        break;
+                    }
+                }
+                if (!running) {
+                    break;
+                }
+                taskYIELD();
+            }
+#endif
             vTaskDelete(handle_);
             handle_ = nullptr;
         }

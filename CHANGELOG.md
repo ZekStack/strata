@@ -2,7 +2,7 @@
 
 All notable changes to Strata are documented in this file.
 
-## 0.1.3
+## 0.1.4
 
 - Add move-only `Strata::FreeRTOS::CountingSemaphore` ownership using `xSemaphoreCreateCountingStatic()` and internal Strata-backed control storage.
 - Expose task and ISR take/give operations, saturation/exhaustion failure reporting, and maximum-count diagnostics.
